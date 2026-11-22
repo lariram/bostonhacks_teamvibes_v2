@@ -9,7 +9,7 @@ import { LineDot } from '../components/Transit';
 import { crewLine, TYPE_COLORS } from '../config';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
-import type { Place, Plan, SavedItem } from '../lib/types';
+import type { MyDay, Place, Plan, SavedItem } from '../lib/types';
 import { bostonTime, dayName, timeAgo } from '../lib/util';
 
 const stopsLabel = (n: number) => (n === 0 ? 'No stops yet' : `${n} ${n === 1 ? 'stop' : 'stops'} so far`);
@@ -29,6 +29,10 @@ export default function History() {
   const [plans, setPlans] = useState<Plan[] | null>(null);
   const [saved, setSaved] = useState<SavedItem[]>([]);
   const [calFor, setCalFor] = useState<Place | null>(null);
+  const [today, setToday] = useState<MyDay | null>(null);
+  useEffect(() => {
+    api<MyDay>('/day').then(setToday);
+  }, []);
 
   const load = useCallback(() => {
     api<Plan[]>('/history').then(setPlans);
@@ -72,6 +76,15 @@ export default function History() {
           Calendar
         </button>
       </div>
+      {today && today.stops.length >= 2 && (
+        <Link to={`/day/share?date=${today.date}`} className="share-today">
+          <span>
+            <strong>{today.sharedPostId ? 'Today is on your feed' : `Share today · ${today.stops.length} stops`}</strong>
+            <span className="small muted">{today.sharedPostId ? 'Edit the caption' : 'Post your whole day as one line'}</span>
+          </span>
+          <span aria-hidden>→</span>
+        </Link>
+      )}
 
       {!plans && <p className="muted center">Loading…</p>}
       {empty && (

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Avatar } from '../components/Avatar';
+import { DayLine } from '../components/DayLine';
 import { FollowButton } from '../components/FollowButton';
 import { BookmarkIcon, HeartIcon } from '../components/Icons';
 import { TypeTag } from '../components/PlaceBadge';
@@ -103,16 +104,25 @@ export default function Feed() {
                   <FollowButton userId={p.user.id} initial={false} />
                 </div>
               )}
-              <div className="post__place post__place--photo">
-                <PlacePhoto place={p.place} variant="thumb" />
-                <div className="post__place-text">
-                <TypeTag type={p.place.type}>
-                  {meta?.neighborhoods.find((n) => n.id === p.place.neighborhood)?.label ?? p.place.live?.area ?? 'Greater Boston'}
-                </TypeTag>
-                <strong className="post__name">{p.place.name}</strong>
-                <Stars value={p.rating} size={13} />
+              {p.day ? (
+                <div className="post__day">
+                  <p className="post__day-head small">
+                    <strong>Day out</strong> <span className="muted">· {p.day.stops.length} stops</span>
+                  </p>
+                  <DayLine stops={p.day.stops} compact />
                 </div>
-              </div>
+              ) : (
+                <div className="post__place post__place--photo">
+                  <PlacePhoto place={p.place} variant="thumb" />
+                  <div className="post__place-text">
+                  <TypeTag type={p.place.type}>
+                    {meta?.neighborhoods.find((n) => n.id === p.place.neighborhood)?.label ?? p.place.live?.area ?? 'Greater Boston'}
+                  </TypeTag>
+                  <strong className="post__name">{p.place.name}</strong>
+                  <Stars value={p.rating} size={13} />
+                  </div>
+                </div>
+              )}
               {p.caption && <p className="post__caption">{p.caption}</p>}
               {p.group && (
                 <p className="post__group small">
@@ -123,7 +133,7 @@ export default function Feed() {
                 <button type="button" className={p.likedByMe ? 'on like' : 'like'} onClick={() => react(p, 'like')} aria-pressed={p.likedByMe} aria-label="Like">
                   <HeartIcon size={19} filled={p.likedByMe} /> {p.likes || ''}
                 </button>
-                {!p.mine && (
+                {!p.mine && !p.day && (
                   <button type="button" className={p.wantedByMe ? 'on want' : 'want'} onClick={() => react(p, 'want')} aria-pressed={p.wantedByMe}>
                     <BookmarkIcon size={19} filled={p.wantedByMe} /> {p.wantedByMe ? 'Saved to My line' : 'Save'}
                   </button>

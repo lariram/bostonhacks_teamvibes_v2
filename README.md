@@ -1,6 +1,6 @@
 # OutBound
 
-**Two picks. One group. Your next stop.**
+**Branch out. Chime in. Explore Boston together.**
 
 BostonHacks 2026 · Team Vibes · Track: **Boundless Boston**
 
@@ -93,6 +93,8 @@ The minimalism is on purpose: the app exists to remove decisions, so every scree
 ## Following
 
 Follow people from your groups, from the feed, or from their profile. The feed opens on **Following** (them plus you); **Everyone** is one tap away. If you don't follow anyone yet, it suggests people, groupmates first.
+
+**Share your day.** Once you have finished two or more stops in a day, the "Next stop?" screen and My line offer **Share your day**: every stop in order (times, neighborhoods, your stars, never your private reviews) as one post drawn as a line, with a caption. Sharing again updates the same post. API: `GET /api/day`, `POST /api/day/share`.
 
 ## Photos
 

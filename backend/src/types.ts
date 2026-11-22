@@ -237,6 +237,8 @@ export interface FeedPost {
   groupId?: string;
   likes: string[];
   wants: string[];
+  /** A whole day out shared as one post (placeId/rating are its first stop / average) */
+  day?: { date: string; stops: { planId: string; placeId: string; rating: number; at: string }[] };
   createdAt: string;
 }
 

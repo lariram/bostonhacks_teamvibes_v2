@@ -75,7 +75,9 @@ export default function Person() {
               <div className="post__body">
                 <div className="post__place">
                   <TypeTag type={post.place.type} />
-                  <strong className="post__name">{post.place.name}</strong>
+                  <strong className="post__name">
+                    {post.stops ? `Day out · ${post.stops} stops, starting at ${post.place.name}` : post.place.name}
+                  </strong>
                   <span className="small muted">
                     <Stars value={post.rating} size={12} /> · {timeAgo(post.createdAt)}
                   </span>

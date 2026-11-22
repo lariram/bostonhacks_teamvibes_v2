@@ -1,6 +1,6 @@
 /** Working name. Change it here and it updates across the app. */
 export const APP_NAME = 'OutBound';
-export const TAGLINE = 'Two picks. One group. Your next stop.';
+export const TAGLINE = 'Branch out. Chime in. Explore Boston together.';
 export const BRAND_STORY = 'On the T, outbound means leaving downtown for somewhere new.';
 
 /** MBTA line colors: the whole visual system is built on these. */

@@ -5,7 +5,7 @@ import { ArrowIcon } from '../components/Icons';
 import { crewLine, LINES, TYPE_COLORS } from '../config';
 import { api } from '../lib/api';
 import { useRecSession } from '../lib/session';
-import type { Group, Plan } from '../lib/types';
+import type { Group, MyDay, Plan } from '../lib/types';
 
 /** "Want another activity with the same group?" / "Want another solo activity?" */
 export default function Next() {
@@ -15,12 +15,14 @@ export default function Next() {
   const [plan, setPlan] = useState<Plan | null>(null);
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
+  const [day, setDay] = useState<MyDay | null>(null);
 
   useEffect(() => {
     api<Plan>(`/plans/${id}`).then((p) => {
       setPlan(p);
       if (p.group) setName(p.group.name);
     });
+    api<MyDay>('/day').then(setDay);
   }, [id]);
 
   async function keepCrew() {
@@ -76,6 +78,15 @@ export default function Next() {
             Find another <ArrowIcon size={20} />
           </button>
           <p className="small center muted">Tip: pick "Find me a group" next time to meet people along the way.</p>
+        </section>
+      )}
+
+      {day && day.stops.length >= 2 && (
+        <section className="next__share">
+          <p className="label">Done for the day?</p>
+          <Link to={`/day/share?date=${day.date}`} className="btn btn--ghost btn--block">
+            {day.sharedPostId ? 'Update your shared day' : `Share your day · ${day.stops.length} stops`}
+          </Link>
         </section>
       )}
 

@@ -201,6 +201,8 @@ export interface FeedPost {
   createdAt: string;
   user: PublicUser | null;
   place: Place;
+  /** A whole day out, shared as one post */
+  day?: { date: string; stops: DayStop[] } | null;
   group: { id: string; name: string; size: number } | null;
   likes: number;
   likedByMe: boolean;
@@ -225,7 +227,7 @@ export interface PersonProfile {
   following: boolean;
   followers: number;
   followingCount: number;
-  posts: { id: string; rating: number; caption?: string; createdAt: string; place: Place }[];
+  posts: { id: string; rating: number; caption?: string; createdAt: string; place: Place; stops?: number }[];
   sharedCrews: { id: string; name: string }[];
 }
 
@@ -241,4 +243,16 @@ export interface TStopBingo {
   byLine: { line: TLine; label: string; visited: number; total: number }[];
   visited: number;
   total: number;
+}
+
+export interface DayStop {
+  at: string;
+  rating: number;
+  place: Place;
+}
+export interface MyDay {
+  date: string;
+  stops: (DayStop & { planId: string; group: { id: string; name: string } | null })[];
+  sharedPostId: string | null;
+  caption: string;
 }

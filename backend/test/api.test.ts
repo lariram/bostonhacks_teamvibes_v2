@@ -193,3 +193,42 @@ describe('following, feed and saved', () => {
     expect((await authed(request(app).post('/api/saved/gardner'))).body.saved).toBe(false);
   });
 });
+
+describe('share your day', () => {
+  it('turns a finished day of stops into one feed post', async () => {
+    const token = (await request(app).post('/api/auth/guest')).body.token as string;
+    const authed = (r: request.Test) => r.set('Authorization', `Bearer ${token}`);
+    const { bostonParts } = await import('../src/live/time.js');
+
+    const plans = [];
+    for (const [placeId, rating] of [['regina', 5], ['freedom-trail', 4], ['mikes-pastry', 3]] as const) {
+      const plan = await authed(request(app).post('/api/plans')).send({ placeId });
+      await authed(request(app).post(`/api/plans/${plan.body.id}/complete`)).send({ rating });
+      plans.push(plan.body);
+    }
+    const date = bostonParts(new Date(plans[0].startsAt ?? plans[0].createdAt)).date;
+
+    const day = await authed(request(app).get(`/api/day?date=${date}`));
+    expect(day.body.stops.map((s: any) => s.place.id)).toEqual(['regina', 'freedom-trail', 'mikes-pastry']);
+    expect(day.body.sharedPostId).toBeNull();
+
+    const shared = await authed(request(app).post('/api/day/share')).send({ date, caption: 'North End crawl' });
+    expect(shared.status).toBe(200);
+    // sharing again updates the same post instead of adding another
+    const again = await authed(request(app).post('/api/day/share')).send({ date, caption: 'Best Saturday' });
+    expect(again.body.id).toBe(shared.body.id);
+
+    const feed = await authed(request(app).get('/api/feed'));
+    const posts = feed.body.filter((p: any) => p.day);
+    expect(posts).toHaveLength(1);
+    expect(posts[0].caption).toBe('Best Saturday');
+    expect(posts[0].day.stops.map((s: any) => s.place.id)).toEqual(['regina', 'freedom-trail', 'mikes-pastry']);
+    expect(posts[0].rating).toBe(4);
+  });
+
+  it('needs at least two finished stops', async () => {
+    const token = (await request(app).post('/api/auth/guest')).body.token as string;
+    const res = await request(app).post('/api/day/share').set('Authorization', `Bearer ${token}`).send({});
+    expect(res.status).toBe(400);
+  });
+});

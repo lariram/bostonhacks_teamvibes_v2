@@ -494,6 +494,14 @@ export function createApp(db: Db, opts: AppOptions = {}) {
             createdAt: p.createdAt,
             user: author ? publicUser(author) : null,
             place: catalog.get(p.placeId),
+            day: p.day
+              ? {
+                  date: p.day.date,
+                  stops: p.day.stops
+                    .map((st) => ({ at: st.at, rating: st.rating, place: catalog.get(st.placeId) }))
+                    .filter((st) => st.place),
+                }
+              : null,
             group: group && group.status === 'active' ? { id: group.id, name: group.name, size: group.memberIds.length } : null,
             likes: p.likes.length,
             likedByMe: p.likes.includes(req.user.id),
@@ -516,7 +524,7 @@ export function createApp(db: Db, opts: AppOptions = {}) {
         .filter((p) => p.userId === u!.id)
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
         .slice(0, 20)
-        .map((p) => ({ id: p.id, rating: p.rating, caption: p.caption, createdAt: p.createdAt, place: catalog.get(p.placeId) }))
+        .map((p) => ({ id: p.id, rating: p.rating, caption: p.caption, createdAt: p.createdAt, place: catalog.get(p.placeId), stops: p.day?.stops.length ?? 0 }))
         .filter((p) => p.place);
       const sharedCrews = db.data.groups
         .filter((g) => g.status !== 'ended' && g.memberIds.includes(u!.id) && g.memberIds.includes(req.user.id))
@@ -606,6 +614,77 @@ export function createApp(db: Db, opts: AppOptions = {}) {
       }
       db.save();
       return { saved: i < 0 };
+    }),
+  );
+
+  // ───────────── share your day ─────────────
+  /** Your finished stops on one Boston day, in order */
+  const dayStops = (userId: string, date: string) =>
+    db.data.plans
+      .filter((p) => p.userId === userId && p.status === 'completed')
+      .map((p) => ({ p, at: p.startsAt ?? p.completedAt ?? p.createdAt }))
+      .filter(({ at }) => bostonParts(new Date(at)).date === date)
+      .sort((a, b) => a.at.localeCompare(b.at))
+      .map(({ p, at }) => ({ plan: p, at, place: placeOf(p.placeId) }))
+      .filter((x) => x.place);
+  const dayDate = (q: unknown) => (typeof q === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(q) ? q : bostonParts(now()).date);
+  const dayPost = (userId: string, date: string) => db.data.posts.find((p) => p.userId === userId && p.day?.date === date);
+
+  app.get(
+    '/api/day',
+    auth,
+    h((req) => {
+      const date = dayDate(req.query.date);
+      const post = dayPost(req.user.id, date);
+      return {
+        date,
+        stops: dayStops(req.user.id, date).map(({ plan, at, place }) => ({
+          planId: plan.id,
+          at,
+          rating: plan.rating ?? 0,
+          place,
+          group: (({ id, name }) => (id ? { id, name } : null))(db.data.groups.find((g) => g.id === plan.groupId) ?? { id: '', name: '' }),
+        })),
+        sharedPostId: post?.id ?? null,
+        caption: post?.caption ?? '',
+      };
+    }),
+  );
+
+  app.post(
+    '/api/day/share',
+    auth,
+    h((req) => {
+      const date = dayDate(req.body?.date);
+      const stops = dayStops(req.user.id, date);
+      if (stops.length < 2) fail(400, 'Finish at least two stops to share your day');
+      const caption = typeof req.body?.caption === 'string' ? req.body.caption.trim().slice(0, 280) || undefined : undefined;
+      const groupIds = [...new Set(stops.map((s) => s.plan.groupId).filter(Boolean))];
+      const day = {
+        date,
+        stops: stops.map(({ plan, at }) => ({ planId: plan.id, placeId: plan.placeId, rating: plan.rating ?? 0, at })),
+      };
+      const rated = day.stops.filter((s) => s.rating);
+      const rating = rated.length ? Math.round(rated.reduce((a, s) => a + s.rating, 0) / rated.length) : 0;
+      let post = dayPost(req.user.id, date);
+      if (post) Object.assign(post, { day, caption, placeId: day.stops[0].placeId, rating, groupId: groupIds.length === 1 ? groupIds[0] : undefined });
+      else {
+        post = {
+          id: newId('post'),
+          userId: req.user.id,
+          placeId: day.stops[0].placeId,
+          rating,
+          caption,
+          groupId: groupIds.length === 1 ? groupIds[0] : undefined,
+          likes: [],
+          wants: [],
+          day,
+          createdAt: now().toISOString(),
+        };
+        db.data.posts.push(post);
+      }
+      db.save();
+      return { id: post.id };
     }),
   );
 

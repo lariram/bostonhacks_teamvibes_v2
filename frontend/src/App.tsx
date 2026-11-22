@@ -9,6 +9,7 @@ import GroupPage from './pages/GroupPage';
 import History from './pages/History';
 import Login from './pages/Login';
 import Next from './pages/Next';
+import ShareDay from './pages/ShareDay';
 import Onboarding from './pages/Onboarding';
 import Person from './pages/Person';
 import PlanDetails from './pages/PlanDetails';
@@ -80,6 +81,7 @@ export default function App() {
               <Route path="/discover/results" element={<Results />} />
               <Route path="/plan/:id" element={<PlanDetails />} />
               <Route path="/plan/:id/next" element={<Next />} />
+              <Route path="/day/share" element={<ShareDay />} />
               <Route path="/feed" element={<Feed />} />
               <Route path="/history" element={<History />} />
               <Route path="/profile" element={<Profile />} />
