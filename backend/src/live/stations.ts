@@ -119,3 +119,13 @@ export function nearestStop(lat: number, lng: number): string | null {
   const mins = Math.max(1, Math.round((best[1] * 1000) / 80)); // ~80 m per minute
   return `${best[0]} · ${mins} min walk`;
 }
+
+/** The closest station with its coordinates (for drawing it on the map) */
+export function nearestStation(lat: number, lng: number, maxKm = 1.5): { name: string; lat: number; lng: number; km: number } | null {
+  let best: { name: string; lat: number; lng: number; km: number } | null = null;
+  for (const [name, sLat, sLng] of STATIONS) {
+    const km = distanceKm([lat, lng], [sLat, sLng]);
+    if (km <= maxKm && (!best || km < best.km)) best = { name, lat: sLat, lng: sLng, km };
+  }
+  return best;
+}

@@ -19,6 +19,7 @@ import type { LiveEvents } from './live/liveEvents.js';
 import { Db, newId } from './db.js';
 import { buildIcs, type IcsEvent } from './ics.js';
 import { recommend } from './recommender.js';
+import { nearestStation } from './live/stations.js';
 import {
   communityRatings,
   createSession,
@@ -455,8 +456,12 @@ export function createApp(db: Db, opts: AppOptions = {}) {
   app.get(
     '/api/feed',
     auth,
-    h((req) =>
-      [...db.data.posts]
+    h((req) => {
+      // "following" (default): people you follow, plus your own posts. "everyone": all posts.
+      const following = new Set([...(req.user.following ?? []), req.user.id]);
+      const scope = req.query.scope === 'everyone' ? 'everyone' : 'following';
+      return [...db.data.posts]
+        .filter((p) => scope === 'everyone' || following.has(p.userId))
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
         .slice(0, 100)
         .map((p) => {
@@ -474,9 +479,114 @@ export function createApp(db: Db, opts: AppOptions = {}) {
             likedByMe: p.likes.includes(req.user.id),
             wantedByMe: req.user.wantIds.includes(p.placeId),
             mine: p.userId === req.user.id,
+            following: (req.user.following ?? []).includes(p.userId),
           };
-        }),
+        });
+    }),
+  );
+
+  // ───────────── people & following ─────────────
+  app.get(
+    '/api/users/:id',
+    auth,
+    h((req) => {
+      const u = db.user(req.params.id);
+      if (!u) fail(404, 'Person not found');
+      const posts = db.data.posts
+        .filter((p) => p.userId === u!.id)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        .slice(0, 20)
+        .map((p) => ({ id: p.id, rating: p.rating, caption: p.caption, createdAt: p.createdAt, place: catalog.get(p.placeId) }))
+        .filter((p) => p.place);
+      const sharedCrews = db.data.groups
+        .filter((g) => g.status !== 'ended' && g.memberIds.includes(u!.id) && g.memberIds.includes(req.user.id))
+        .map((g) => ({ id: g.id, name: g.name }));
+      return {
+        user: publicUser(u!),
+        me: u!.id === req.user.id,
+        following: (req.user.following ?? []).includes(u!.id),
+        followers: db.data.users.filter((x) => x.following?.includes(u!.id)).length,
+        followingCount: u!.following?.length ?? 0,
+        posts,
+        sharedCrews,
+      };
+    }),
+  );
+
+  app.post(
+    '/api/users/:id/follow',
+    auth,
+    h((req) => {
+      const target = db.user(req.params.id);
+      if (!target || target.id === req.user.id) fail(400, "You can't follow that account");
+      const list = (req.user.following ??= []);
+      const i = list.indexOf(target!.id);
+      if (i >= 0) list.splice(i, 1);
+      else list.push(target!.id);
+      db.save();
+      return { following: i < 0, followingIds: list };
+    }),
+  );
+
+  // Who to follow: people from your crews first, then people posting lately
+  app.get(
+    '/api/people/suggested',
+    auth,
+    h((req) => {
+      const skip = new Set([req.user.id, ...(req.user.following ?? [])]);
+      const crewmates = db.data.groups
+        .filter((g) => g.memberIds.includes(req.user.id))
+        .flatMap((g) => g.memberIds.map((id) => ({ id, why: `In ${g.name}` })));
+      const posters = [...db.data.posts]
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        .map((p) => ({ id: p.userId, why: 'Posting lately' }));
+      const seen = new Set<string>();
+      return [...crewmates, ...posters]
+        .filter((x) => !skip.has(x.id) && !seen.has(x.id) && seen.add(x.id))
+        .slice(0, 6)
+        .map((x) => ({ user: publicUser(db.user(x.id)!), why: x.why }))
+        .filter((x) => x.user);
+    }),
+  );
+
+  app.get(
+    '/api/following',
+    auth,
+    h((req) => (req.user.following ?? []).map((id) => db.user(id)).filter((u): u is User => !!u).map(publicUser)),
+  );
+
+  // ───────────── saved from the feed ─────────────
+  app.get(
+    '/api/saved',
+    auth,
+    h((req) =>
+      req.user.wantIds
+        .map((id) => catalog.get(id))
+        .filter((p): p is Place => !!p)
+        // a saved one-off event that's already over isn't worth showing
+        .filter((p) => !p.live || p.live.openHours || Date.parse(p.live.endsAt ?? p.live.startsAt) > now().getTime())
+        .map((p) => ({
+          place: p,
+          planned: db.data.plans.some((pl) => pl.userId === req.user.id && pl.placeId === p.id && pl.status === 'active'),
+        })),
     ),
+  );
+
+  app.post(
+    '/api/saved/:placeId',
+    auth,
+    h((req) => {
+      const p = catalog.get(req.params.placeId);
+      if (!p) fail(404, 'Unknown place');
+      const i = req.user.wantIds.indexOf(p!.id);
+      if (i >= 0) req.user.wantIds.splice(i, 1);
+      else {
+        req.user.wantIds.push(p!.id);
+        catalog.remember(p!);
+      }
+      db.save();
+      return { saved: i < 0 };
+    }),
   );
 
   app.post(
@@ -500,6 +610,7 @@ export function createApp(db: Db, opts: AppOptions = {}) {
         if (i >= 0) u.wantIds.splice(i, 1);
         else {
           u.wantIds.push(post!.placeId);
+          catalog.remember(place);
           learn(u, place.tags, 0.05);
         }
       } else fail(400, 'Unknown reaction');
@@ -673,6 +784,10 @@ export function createApp(db: Db, opts: AppOptions = {}) {
       ...plan,
       place: catalog.get(plan.placeId),
       neighborhoodLabel: NEIGHBORHOOD_BY_ID[catalog.get(plan.placeId)?.neighborhood ?? 'downtown'].label,
+      station: (() => {
+        const p = catalog.get(plan.placeId);
+        return p && !p.live?.approxLocation ? nearestStation(p.lat, p.lng) : null;
+      })(),
       group: g ? groupProfile(db, g, placeOf) : null,
     };
   }

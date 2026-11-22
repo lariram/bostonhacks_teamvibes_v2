@@ -98,6 +98,7 @@ export interface SelfUser extends PublicUser {
   lastPrice?: PriceTier;
   isGuest?: boolean;
   persona?: Persona;
+  following?: string[];
 }
 
 export interface Me {
@@ -178,6 +179,7 @@ export interface Plan {
   completedAt?: string;
   place: Place;
   neighborhoodLabel: string;
+  station?: { name: string; lat: number; lng: number; km: number } | null;
   group: Group | null;
 }
 
@@ -193,6 +195,7 @@ export interface FeedPost {
   likedByMe: boolean;
   wantedByMe: boolean;
   mine: boolean;
+  following?: boolean;
 }
 
 export interface ChatMessage {
@@ -203,4 +206,19 @@ export interface ChatMessage {
   at: string;
   user: PublicUser | null;
   mine: boolean;
+}
+
+export interface PersonProfile {
+  user: PublicUser;
+  me: boolean;
+  following: boolean;
+  followers: number;
+  followingCount: number;
+  posts: { id: string; rating: number; caption?: string; createdAt: string; place: Place }[];
+  sharedCrews: { id: string; name: string }[];
+}
+
+export interface SavedItem {
+  place: Place;
+  planned: boolean;
 }

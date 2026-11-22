@@ -1,4 +1,5 @@
 import { NEIGHBORHOOD_LINES, TYPE_COLORS, linesFromStop } from '../config';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import type { Suggestion } from '../lib/types';
 import { formatMinutes, liveWhen } from '../lib/util';
@@ -17,10 +18,13 @@ interface Props {
   suggestion: Suggestion;
   letter: 'A' | 'B';
   onChoose: () => void;
+  /** Save it to the in-app calendar without going yet */
+  onAddToCalendar?: () => void;
+  added?: boolean;
   busy?: boolean;
 }
 
-export function SuggestionCard({ suggestion, letter, onChoose, busy }: Props) {
+export function SuggestionCard({ suggestion, letter, onChoose, onAddToCalendar, added, busy }: Props) {
   const { meta } = useAuth();
   const { place, reasons, stretchNote, communityRating } = suggestion;
   const hood =
@@ -69,6 +73,16 @@ export function SuggestionCard({ suggestion, letter, onChoose, busy }: Props) {
         <button type="button" className="btn btn--primary btn--block" onClick={onChoose} disabled={busy}>
           {busy ? 'Boarding…' : `Take ${letter}`} <ArrowIcon size={18} />
         </button>
+        {onAddToCalendar &&
+          (added ? (
+            <Link to="/history?view=calendar" className="add-later added">
+              ✓ On your calendar · View
+            </Link>
+          ) : (
+            <button type="button" className="add-later" onClick={onAddToCalendar}>
+              Add to my calendar for later
+            </button>
+          ))}
       </div>
     </article>
   );

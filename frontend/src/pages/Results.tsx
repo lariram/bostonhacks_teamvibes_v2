@@ -10,7 +10,8 @@ import { TYPE_COLORS } from '../config';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { useRecSession } from '../lib/session';
-import type { Plan, RecFeedback } from '../lib/types';
+import type { Place, Plan, RecFeedback } from '../lib/types';
+import { AddToCalendarSheet } from '../components/AddToCalendarSheet';
 import { dayName, windowLabel } from '../lib/util';
 
 /** Two options, A or B. Regenerating opens the feedback sheet. */
@@ -21,6 +22,8 @@ export default function Results() {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [choosing, setChoosing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [calFor, setCalFor] = useState<Place | null>(null);
+  const [added, setAdded] = useState<Set<string>>(new Set());
 
   if (!session.request) return <Navigate to="/discover" replace />;
   const req = session.request;
@@ -78,13 +81,29 @@ export default function Results() {
         <TrainLoader />
       ) : (
         <div className="results" key={session.round}>
-          {a && <SuggestionCard letter="A" suggestion={a} busy={choosing === a.place.id} onChoose={() => choose(a.place.id)} />}
+          {a && (
+            <SuggestionCard
+              letter="A"
+              suggestion={a}
+              busy={choosing === a.place.id}
+              onChoose={() => choose(a.place.id)}
+              onAddToCalendar={() => setCalFor(a.place)}
+              added={added.has(a.place.id)}
+            />
+          )}
           {b && (
             <>
               <div className="or" aria-hidden>
                 <span>or</span>
               </div>
-              <SuggestionCard letter="B" suggestion={b} busy={choosing === b.place.id} onChoose={() => choose(b.place.id)} />
+              <SuggestionCard
+                letter="B"
+                suggestion={b}
+                busy={choosing === b.place.id}
+                onChoose={() => choose(b.place.id)}
+                onAddToCalendar={() => setCalFor(b.place)}
+                added={added.has(b.place.id)}
+              />
             </>
           )}
           {none && (
@@ -113,6 +132,16 @@ export default function Results() {
       )}
 
       <FeedbackSheet open={feedbackOpen} onClose={() => setFeedbackOpen(false)} onSubmit={regenerate} />
+      <AddToCalendarSheet
+        place={calFor}
+        defaultStart={req.startAt ? new Date(req.startAt) : undefined}
+        defaultMinutes={req.durationMinutes}
+        onClose={() => setCalFor(null)}
+        onAdded={(plan) => {
+          setAdded((s) => new Set(s).add(plan.placeId));
+          setCalFor(null);
+        }}
+      />
     </div>
   );
 }

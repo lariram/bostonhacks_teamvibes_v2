@@ -45,7 +45,7 @@ Open **http://localhost:5173** and tap **Try it as a guest**. No sign-up needed.
 - **Live events work out of the box** from seven public calendars (MIT, Northeastern, BU, Boston College, Downtown Boston, Massachusetts 250, SoWa). For concerts, sports, comedy and Google's listings, add free API keys: copy `backend/.env.example` to `backend/.env` and fill it in (see [Live events](#live-events-whats-on-today)).
 
 ```bash
-npm test            # 51 backend tests: algorithm, live-event parsing, end-to-end API flow
+npm test            # 53 backend tests: algorithm, live-event parsing, end-to-end API flow
 npm run typecheck   # both apps
 npm run build       # production build of the web app
 npm start           # one server on :3001 serving the API + built web app
@@ -88,6 +88,14 @@ The minimalism is on purpose: the app exists to remove decisions, so every scree
 
 *common is a student project and is not affiliated with the MBTA. The line colors are a nod to the T.*
 
+## Following
+
+Follow people from your crews, from the feed, or from their profile. The feed opens on **Following** (them plus you); **Everyone** is one tap away. If you don't follow anyone yet, it suggests people, crewmates first.
+
+## Maps
+
+Each place gets a quiet light-gray map (OpenStreetMap tiles, grayscale) with the place as a pin in its type color, the nearest T station as a square in its line color, and a dotted walking path between them. If tiles can't load, the pin, station and path still draw on a plain grid.
+
 ## Live events: what's on today
 
 On top of the 106 curated spots, common pulls **real events for the next two weeks** (in Boston time) and mixes them into the picks, so you can plan tonight or next Thursday. A real show tonight gets a boost and says so: *"Starts in 40 min"*, *"Only on today"*.
@@ -116,9 +124,10 @@ If your network uses an HTTPS proxy, start the server with `NODE_USE_ENV_PROXY=1
 
 ## My line + calendars
 
-My line shows your plans as a line (**Coming up** and **Been there**) or as a **month calendar** with a dot per plan. Every plan has a real time: a live event's own start, or the time you picked.
+**My line** is one continuous line: your recent stops, a pulsing **Now** marker, then the line runs on (dashed) into the future, day by day, through everything you have coming up, including dated events you saved from the feed. Spots you saved without a date sit in **Saved for any time**. Switch to **Calendar** for a month view: filled dots are plans, hollow dots are saved events. Every plan has a real time: a live event's own start, or the time you picked.
 
-- **Add one plan:** on a plan's page, *Google Calendar* opens a pre-filled event; *Apple / Outlook (.ics)* downloads a calendar file.
+- **In-app calendar first:** *Add to my calendar for later* (on any pick, or any saved spot) puts it on My line without linking anything external.
+- **Add one plan elsewhere:** on a plan's page, *Google Calendar* opens a pre-filled event; *Apple / Outlook (.ics)* downloads a calendar file.
 - **Sync everything:** *Get my calendar link* on My line gives you a private feed. *Subscribe in Apple Calendar* adds it, and new plans show up automatically. For Google Calendar, paste it into *Settings → Add calendar → From URL*. Calendar apps can only reach the feed while the app runs somewhere they can see: your own computer for Apple Calendar, a public server for Google.
 
 ## How the recommendation algorithm works
@@ -180,7 +189,9 @@ frontend/                React + Vite + TypeScript (mobile-first)
 | GET | `/api/live` | live-event counts (today + next two weeks) and each source's status |
 | GET | `/api/plans/:id/calendar.ics` | one plan as a calendar file (Apple Calendar, Outlook) |
 | GET | `/api/me/calendar` → `/api/calendar/<token>.ics` | private feed of everything on My line, for calendar subscriptions |
-| GET | `/api/history`, `/api/feed` | |
+| GET | `/api/history`, `/api/feed?scope=following\|everyone` | |
+| GET/POST | `/api/users/:id`, `/api/users/:id/follow`, `/api/people/suggested` | profiles and following |
+| GET/POST | `/api/saved`, `/api/saved/:placeId` | spots saved from the feed |
 | POST | `/api/feed/:id/react` | `like` / `want` (both shape recommendations) |
 | GET/POST | `/api/groups/:id`, `/keep`, `/messages`, `/join-current`, `/leave` | crew profile + chat |
 

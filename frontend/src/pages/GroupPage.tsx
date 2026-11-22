@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Avatar } from '../components/Avatar';
+import { FollowButton } from '../components/FollowButton';
 import { ArrowIcon, SendIcon } from '../components/Icons';
 import { TypeTag } from '../components/PlaceBadge';
 import { TopBar } from '../components/TopBar';
@@ -157,12 +158,15 @@ export default function GroupPage() {
             <ul className="people">
               {group.members.map((m) => (
                 <li key={m.id}>
-                  <Avatar user={m} size={40} />
-                  <div>
-                    <strong>{m.id === me?.user.id ? 'You' : m.fullName}</strong>
-                    <p className="small muted">{m.school ?? `@${m.username}`}</p>
-                    {m.bio && <p className="small">{m.bio}</p>}
-                  </div>
+                  <Link to={m.id === me?.user.id ? '/profile' : `/people/${m.id}`} className="person-link">
+                    <Avatar user={m} size={40} />
+                    <div>
+                      <strong>{m.id === me?.user.id ? 'You' : m.fullName}</strong>
+                      <p className="small muted">{m.school ?? `@${m.username}`}</p>
+                      {m.bio && <p className="small">{m.bio}</p>}
+                    </div>
+                  </Link>
+                  {m.id !== me?.user.id && <FollowButton userId={m.id} initial={!!me?.user.following?.includes(m.id)} />}
                 </li>
               ))}
             </ul>

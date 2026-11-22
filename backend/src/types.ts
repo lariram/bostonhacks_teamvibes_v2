@@ -105,6 +105,8 @@ export interface User {
   tagWeights: Record<string, number>;
   /** Places saved from the feed ("want to try") */
   wantIds: string[];
+  /** People whose posts lead your feed */
+  following?: string[];
   /** Last budget this user chose; used to cap group budgets */
   lastPrice?: PriceTier;
   /** Simulated locals that make the demo feel alive */

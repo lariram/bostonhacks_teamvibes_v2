@@ -135,12 +135,52 @@ describe('full day flow', () => {
 
   it('saving a place from the feed boosts it', async () => {
     const token = await signup();
-    const feed = await request(app).get('/api/feed').set('Authorization', `Bearer ${token}`);
+    const feed = await request(app).get('/api/feed?scope=everyone').set('Authorization', `Bearer ${token}`);
     const post = feed.body[0];
     const r = await request(app)
       .post(`/api/feed/${post.id}/react`)
       .set('Authorization', `Bearer ${token}`)
       .send({ kind: 'want' });
     expect(r.body.wantedByMe).toBe(true);
+  });
+});
+
+describe('following, feed and saved', () => {
+  it('follow people: the feed leads with them; everyone is one tab away', async () => {
+    const token = await signup();
+    const authed = (r: request.Test) => r.set('Authorization', `Bearer ${token}`);
+    expect((await authed(request(app).get('/api/feed'))).body).toHaveLength(0); // following no one yet
+    const everyone = (await authed(request(app).get('/api/feed?scope=everyone'))).body;
+    expect(everyone.length).toBeGreaterThan(3);
+
+    const maya = everyone.find((p: any) => p.user.firstName === 'Maya').user.id;
+    const suggested = (await authed(request(app).get('/api/people/suggested'))).body;
+    expect(suggested.length).toBeGreaterThan(0);
+    expect((await authed(request(app).post(`/api/users/${maya}/follow`))).body.following).toBe(true);
+
+    const feed = (await authed(request(app).get('/api/feed'))).body;
+    expect(feed.length).toBeGreaterThan(0);
+    expect(feed.every((p: any) => p.user.id === maya)).toBe(true);
+    expect(feed[0].following).toBe(true);
+
+    const profile = (await authed(request(app).get(`/api/users/${maya}`))).body;
+    expect(profile.following).toBe(true);
+    expect(profile.followers).toBe(1);
+    expect((await authed(request(app).post(`/api/users/${maya}/follow`))).body.following).toBe(false); // toggle off
+  });
+
+  it('saved spots show up in one place and can be removed', async () => {
+    const token = await signup();
+    const authed = (r: request.Test) => r.set('Authorization', `Bearer ${token}`);
+    expect((await authed(request(app).post('/api/saved/gardner'))).body.saved).toBe(true);
+    const saved = (await authed(request(app).get('/api/saved'))).body;
+    expect(saved.map((s: any) => s.place.id)).toEqual(['gardner']);
+    expect(saved[0].planned).toBe(false);
+    await authed(request(app).post('/api/plans')).send({
+      placeId: 'gardner',
+      request: { location: 'fenway', type: 'activity', price: '40plus', durationMinutes: 120, startAt: '2026-11-22T15:00:00Z' },
+    });
+    expect((await authed(request(app).get('/api/saved'))).body[0].planned).toBe(true);
+    expect((await authed(request(app).post('/api/saved/gardner'))).body.saved).toBe(false);
   });
 });

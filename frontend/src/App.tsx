@@ -10,6 +10,7 @@ import History from './pages/History';
 import Login from './pages/Login';
 import Next from './pages/Next';
 import Onboarding from './pages/Onboarding';
+import Person from './pages/Person';
 import PlanDetails from './pages/PlanDetails';
 import Profile from './pages/Profile';
 import Rate from './pages/Rate';
@@ -83,6 +84,7 @@ export default function App() {
               <Route path="/history" element={<History />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/groups/:id" element={<GroupPage />} />
+              <Route path="/people/:id" element={<Person />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

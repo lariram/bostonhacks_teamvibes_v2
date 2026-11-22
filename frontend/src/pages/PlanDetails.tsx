@@ -1,7 +1,9 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Avatar } from '../components/Avatar';
-import { ArrowIcon, ChatIcon, LockIcon } from '../components/Icons';
+import { MapView } from '../components/MapView';
+import { FollowButton } from '../components/FollowButton';
+import { ArrowIcon, ChatIcon, CheckIcon, LockIcon } from '../components/Icons';
 import { Stars } from '../components/Stars';
 import { TopBar } from '../components/TopBar';
 import { LineDot, LineDots, StationSign } from '../components/Transit';
@@ -9,7 +11,7 @@ import { crewLine, LINES, linesFromStop, TYPE_COLORS, TYPE_LINE } from '../confi
 import { api, downloadFile } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import type { Plan } from '../lib/types';
-import { bostonTime, dayName, formatMinutes, googleCalendarUrl, liveRange, liveWhen, mapsSearchUrl, osmEmbedUrl, TIME_LABEL, timeAgo, transitDirectionsUrl } from '../lib/util';
+import { bostonTime, dayName, formatMinutes, googleCalendarUrl, liveRange, liveWhen, mapsSearchUrl, TIME_LABEL, timeAgo, transitDirectionsUrl } from '../lib/util';
 
 const updatedAgo = (iso: string) => {
   const t = timeAgo(iso);
@@ -66,9 +68,8 @@ export default function PlanDetails() {
         <span>{place.tStop}</span>
       </StationSign>
 
-      <div className="map">
-        <iframe title={`Map of ${place.name}`} src={osmEmbedUrl(place.lat, place.lng)} loading="lazy" />
-        <span className="map__pin" style={{ '--pin': TYPE_COLORS[place.type] } as CSSProperties} aria-hidden />
+      <div className="map-wrap">
+        <MapView lat={place.lat} lng={place.lng} color={TYPE_COLORS[place.type]} station={plan.station} approx={place.live?.approxLocation} />
         <a className="map__open" href={mapsSearchUrl(place.name, place.address)} target="_blank" rel="noreferrer">
           Open in Maps <ArrowIcon size={14} />
         </a>
@@ -136,12 +137,15 @@ export default function PlanDetails() {
       {plan.startsAt && plan.status === 'active' && (
         <section className="add-cal">
           <div className="add-cal__head">
-            <span className="label">On your calendar</span>
+            <Link to="/history?view=calendar" className="label in-app-cal">
+              <CheckIcon size={14} /> On your common. calendar
+            </Link>
             <span className="small muted">
               {dayName(new Date(plan.startsAt))} · {bostonTime(plan.startsAt)}
               {plan.endsAt ? `–${bostonTime(plan.endsAt)}` : ''}
             </span>
           </div>
+          <p className="tiny muted add-cal__also">Also add it to:</p>
           <div className="add-cal__buttons">
             <a
               className="btn btn--ghost btn--sm"
@@ -173,11 +177,14 @@ export default function PlanDetails() {
           <ul className="people">
             {others.map((m) => (
               <li key={m.id}>
-                <Avatar user={m} size={40} />
-                <div>
-                  <strong>{m.firstName}</strong>, {m.age}
-                  <p className="small muted">{m.school}</p>
-                </div>
+                <Link to={`/people/${m.id}`} className="person-link">
+                  <Avatar user={m} size={40} />
+                  <div>
+                    <strong>{m.firstName}</strong>, {m.age}
+                    <p className="small muted">{m.school}</p>
+                  </div>
+                </Link>
+                <FollowButton userId={m.id} initial={!!me?.user.following?.includes(m.id)} />
               </li>
             ))}
           </ul>
