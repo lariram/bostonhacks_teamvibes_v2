@@ -81,7 +81,9 @@ Signature pieces (all in `frontend/src/components/Transit.tsx`):
 - **The fork:** results open with one track splitting into branches **A** and **B**, like the Green Line branches.
 - **Station sign:** every place gets a black platform-style sign with its nearest T line bullets.
 - **My line / Your day together:** history and a crew's day are drawn as stations on a line, with the current stop pulsing.
-- **Your Boston:** a schematic T-style map of the 12 neighborhoods that fills in as you explore (the mentor's "Boston bingo" idea).
+- **Your Boston:** "Boston bingo" (the mentor's idea), with two maps to switch between:
+  - **Neighborhoods:** a schematic T-style map of the 12 neighborhoods that fills in as you explore.
+  - **T stops:** all 122 subway, trolley and Silver Line stops on a real map, drawn with a fish-eye lens so the crowded downtown core stays readable. Every place you complete checks off its nearest stop (within about 1 km). It also shows per-line progress (e.g. Green 4/69). Tap a stop to see its name.
 - **Neighborhood chips** carry real line bullets (Cambridge = Red, Seaport = Silver, Downtown = all four).
 
 The minimalism is on purpose: the app exists to remove decisions, so every screen asks for one thing.

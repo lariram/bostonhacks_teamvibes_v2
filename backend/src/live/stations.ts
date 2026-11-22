@@ -96,7 +96,60 @@ export const STATIONS: [string, number, number][] = [
   ['Heath Street (Green E)', 42.3288, -71.111],
   ['Nubian (Silver)', 42.3292, -71.0838],
   ['Chelsea (Silver)', 42.397, -71.041],
+  ['Shawmut (Red)', 42.2933, -71.0657],
+  // Green Line surface stops (approximate positions)
+  ['Blandford Street (Green B)', 42.3492, -71.1003],
+  ['BU East (Green B)', 42.3496, -71.1038],
+  ['Amory Street (Green B)', 42.3505, -71.114],
+  ["Packard's Corner (Green B)", 42.3517, -71.1253],
+  ['Griggs Street (Green B)', 42.3486, -71.1347],
+  ['Allston Street (Green B)', 42.3487, -71.1373],
+  ['Warren Street (Green B)', 42.3482, -71.1404],
+  ['Sutherland Road (Green B)', 42.3417, -71.1462],
+  ['Chiswick Road (Green B)', 42.3404, -71.151],
+  ['South Street (Green B)', 42.3396, -71.1573],
+  ['Hawes Street (Green C)', 42.3448, -71.1114],
+  ['Kent Street (Green C)', 42.3446, -71.1142],
+  ['Saint Paul Street (Green C)', 42.3433, -71.117],
+  ['Summit Avenue (Green C)', 42.341, -71.1265],
+  ['Fairbanks Street (Green C)', 42.3394, -71.1311],
+  ['Washington Square (Green C)', 42.3392, -71.1352],
+  ['Tappan Street (Green C)', 42.3383, -71.1386],
+  ['Dean Road (Green C)', 42.3374, -71.1411],
+  ['Englewood Avenue (Green C)', 42.3367, -71.1452],
+  ['Beaconsfield (Green D)', 42.3354, -71.1408],
+  ['Eliot (Green D)', 42.319, -71.2165],
+  ['Waban (Green D)', 42.3259, -71.2306],
+  ['Woodland (Green D)', 42.3329, -71.243],
+  ['Longwood Medical Area (Green E)', 42.3357, -71.1004],
+  ['Fenwood Road (Green E)', 42.3335, -71.1055],
+  ['Mission Park (Green E)', 42.3331, -71.1095],
+  ['Riverway (Green E)', 42.3317, -71.1115],
+  ['Back of the Hill (Green E)', 42.33, -71.1112],
 ];
+
+/**
+ * Each line's stops in order, for drawing the T map (station names as above).
+ * Branches are separate segments.
+ */
+export const ROUTES: { line: 'red' | 'orange' | 'blue' | 'green' | 'silver'; label: string; stops: string[] }[] = [
+  { line: 'red', label: 'Red Line', stops: ['Alewife', 'Davis', 'Porter', 'Harvard', 'Central', 'Kendall/MIT', 'Charles/MGH', 'Park Street', 'Downtown Crossing', 'South Station', 'Broadway', 'Andrew', 'JFK/UMass', 'Savin Hill', 'Fields Corner', 'Shawmut', 'Ashmont', 'Mattapan'] },
+  { line: 'red', label: 'Red Line', stops: ['JFK/UMass', 'North Quincy', 'Wollaston', 'Quincy Center', 'Quincy Adams', 'Braintree'] },
+  { line: 'orange', label: 'Orange Line', stops: ['Oak Grove', 'Malden Center', 'Wellington', 'Assembly', 'Sullivan Square', 'Community College', 'North Station', 'Haymarket', 'State', 'Downtown Crossing', 'Chinatown', 'Tufts Medical Center', 'Back Bay', 'Massachusetts Ave', 'Ruggles', 'Roxbury Crossing', 'Jackson Square', 'Stony Brook', 'Green Street', 'Forest Hills'] },
+  { line: 'blue', label: 'Blue Line', stops: ['Wonderland', 'Revere Beach', 'Beachmont', 'Suffolk Downs', 'Orient Heights', 'Wood Island', 'Airport', 'Maverick', 'Aquarium', 'State', 'Government Center', 'Bowdoin'] },
+  { line: 'green', label: 'Green Line', stops: ['Medford/Tufts', 'Ball Square', 'Magoun Square', 'Gilman Square', 'East Somerville', 'Lechmere', 'Science Park/West End', 'North Station', 'Haymarket', 'Government Center', 'Park Street', 'Boylston', 'Arlington', 'Copley', 'Hynes Convention Center', 'Kenmore'] },
+  { line: 'green', label: 'Green Line', stops: ['Lechmere', 'Union Square'] },
+  { line: 'green', label: 'Green Line', stops: ['Kenmore', 'Blandford Street', 'BU East', 'BU Central', 'Amory Street', 'Babcock Street', "Packard's Corner", 'Harvard Avenue', 'Griggs Street', 'Allston Street', 'Warren Street', 'Washington Street', 'Sutherland Road', 'Chiswick Road', 'Chestnut Hill Ave', 'South Street', 'Boston College'] },
+  { line: 'green', label: 'Green Line', stops: ['Kenmore', "Saint Mary's Street", 'Hawes Street', 'Kent Street', 'Saint Paul Street', 'Coolidge Corner', 'Summit Avenue', 'Fairbanks Street', 'Washington Square', 'Tappan Street', 'Dean Road', 'Englewood Avenue', 'Cleveland Circle'] },
+  { line: 'green', label: 'Green Line', stops: ['Kenmore', 'Fenway', 'Longwood', 'Brookline Village', 'Brookline Hills', 'Beaconsfield', 'Reservoir', 'Chestnut Hill', 'Newton Centre', 'Newton Highlands', 'Eliot', 'Waban', 'Woodland', 'Riverside'] },
+  { line: 'green', label: 'Green Line', stops: ['Copley', 'Prudential', 'Symphony', 'Northeastern', 'Museum of Fine Arts', 'Longwood Medical Area', 'Brigham Circle', 'Fenwood Road', 'Mission Park', 'Riverway', 'Back of the Hill', 'Heath Street'] },
+  { line: 'silver', label: 'Silver Line', stops: ['South Station', 'Courthouse', 'World Trade Center'] },
+  { line: 'silver', label: 'Silver Line', stops: ['Chinatown', 'Nubian'] },
+  { line: 'silver', label: 'Silver Line', stops: ['World Trade Center', 'Airport', 'Chelsea'] },
+];
+
+/** "Harvard (Red)" → "Harvard" */
+export const stationShortName = (name: string) => name.replace(/\s*\(.*\)$/, '');
 
 /** Within ~12 minutes' walk of a subway, light rail or Silver Line station? */
 export function transitStation(lat: number, lng: number, maxKm = 1): { name: string; km: number } | null {
@@ -128,4 +181,37 @@ export function nearestStation(lat: number, lng: number, maxKm = 1.5): { name: s
     if (km <= maxKm && (!best || km < best.km)) best = { name, lat: sLat, lng: sLng, km };
   }
   return best;
+}
+
+export type TLine = (typeof ROUTES)[number]['line'];
+
+/**
+ * "T stop bingo": every rapid-transit stop, and which ones you've checked off.
+ * A stop counts once you've completed a plan at a place within ~1 km of it
+ * (its nearest station).
+ */
+export function tStopBingo(places: { lat: number; lng: number }[]) {
+  const visited = new Set<string>();
+  for (const p of places) {
+    const st = nearestStation(p.lat, p.lng, 1);
+    if (st) visited.add(stationShortName(st.name));
+  }
+  const linesOf = new Map<string, Set<TLine>>();
+  for (const r of ROUTES) for (const s of r.stops) (linesOf.get(s) ?? linesOf.set(s, new Set()).get(s)!).add(r.line);
+  const stops = STATIONS.map(([full, lat, lng]) => {
+    const name = stationShortName(full);
+    return { name, lines: [...(linesOf.get(name) ?? [])], lat, lng, visited: visited.has(name) };
+  });
+  const LABELS: Record<TLine, string> = { red: 'Red', orange: 'Orange', blue: 'Blue', green: 'Green', silver: 'Silver' };
+  const byLine = (Object.keys(LABELS) as TLine[]).map((line) => {
+    const on = stops.filter((s) => s.lines.includes(line));
+    return { line, label: LABELS[line], visited: on.filter((s) => s.visited).length, total: on.length };
+  });
+  return {
+    stops,
+    routes: ROUTES.map((r) => ({ line: r.line, stops: r.stops })),
+    byLine,
+    visited: visited.size,
+    total: stops.length,
+  };
 }

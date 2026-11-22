@@ -2,6 +2,7 @@ import { useEffect, useState, type CSSProperties } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Avatar, AvatarStack } from '../components/Avatar';
 import { BostonMap, LineDot } from '../components/Transit';
+import { TStopMap } from '../components/TStopMap';
 import { crewLine, LINES, TYPE_LINE } from '../config';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
@@ -11,6 +12,13 @@ export default function Profile() {
   const { me, meta, refresh, signOut } = useAuth();
   const navigate = useNavigate();
   const [groups, setGroups] = useState<Group[]>([]);
+  const [bingoMode, setBingoMode] = useState<'hoods' | 'stops'>(
+    () => (localStorage.getItem('bingoMode') as 'hoods' | 'stops') ?? 'hoods',
+  );
+  const pickMode = (m: 'hoods' | 'stops') => {
+    setBingoMode(m);
+    localStorage.setItem('bingoMode', m);
+  };
 
   useEffect(() => {
     refresh();
@@ -18,7 +26,7 @@ export default function Profile() {
   }, [refresh]);
 
   if (!me) return null;
-  const { user, stats, bingo, learnedFavorites } = me;
+  const { user, stats, bingo, tStops, learnedFavorites } = me;
   const visited = new Set(bingo.filter((b) => b.visited).map((b) => b.id));
   const isGuest = user.isGuest;
 
@@ -57,11 +65,32 @@ export default function Profile() {
         <div className="panel__head">
           <h2 className="label">Your Boston</h2>
           <span className="label label--muted">
-            {visited.size} / {bingo.length} neighborhoods
+            {bingoMode === 'hoods'
+              ? `${visited.size} / ${bingo.length} neighborhoods`
+              : `${tStops.visited} / ${tStops.total} stops`}
           </span>
         </div>
-        <BostonMap visited={visited} />
-        <p className="small muted">Every neighborhood you explore lights up. Collect all twelve.</p>
+        <div className="segmented segmented--sm bingo-switch" role="tablist" aria-label="Bingo map">
+          <button role="tab" aria-selected={bingoMode === 'hoods'} className={bingoMode === 'hoods' ? 'on' : ''} onClick={() => pickMode('hoods')}>
+            Neighborhoods
+          </button>
+          <button role="tab" aria-selected={bingoMode === 'stops'} className={bingoMode === 'stops' ? 'on' : ''} onClick={() => pickMode('stops')}>
+            T stops
+          </button>
+        </div>
+        {bingoMode === 'hoods' ? (
+          <>
+            <BostonMap visited={visited} />
+            <p className="small muted">Every neighborhood you explore lights up. Collect all twelve.</p>
+          </>
+        ) : (
+          <>
+            <TStopMap data={tStops} />
+            <p className="small muted">
+              Each place you go checks off its nearest stop. All {tStops.total} subway, trolley and Silver Line stops count.
+            </p>
+          </>
+        )}
       </section>
 
       <section className="panel">

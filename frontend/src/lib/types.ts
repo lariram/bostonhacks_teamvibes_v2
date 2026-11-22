@@ -107,6 +107,7 @@ export interface Me {
   user: SelfUser;
   stats: { completed: number; avgRating: number | null; posts: number; groups: number };
   bingo: { id: string; label: string; visited: boolean }[];
+  tStops: TStopBingo;
   learnedFavorites: string[];
 }
 
@@ -231,4 +232,13 @@ export interface PersonProfile {
 export interface SavedItem {
   place: Place;
   planned: boolean;
+}
+
+export type TLine = 'red' | 'orange' | 'blue' | 'green' | 'silver';
+export interface TStopBingo {
+  stops: { name: string; lines: TLine[]; lat: number; lng: number; visited: boolean }[];
+  routes: { line: TLine; stops: string[] }[];
+  byLine: { line: TLine; label: string; visited: number; total: number }[];
+  visited: number;
+  total: number;
 }

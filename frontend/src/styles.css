@@ -2235,3 +2235,76 @@ ol {
   outline: 2px solid var(--ink);
   outline-offset: 2px;
 }
+
+/* ───────── bingo: T stops ───────── */
+.bingo-switch {
+  margin-bottom: 6px;
+}
+.segmented--sm button {
+  padding: 6px 14px;
+  font-size: 13px;
+}
+.tmap__stop {
+  cursor: pointer;
+}
+.tmap__label {
+  font-size: 8px;
+  paint-order: stroke;
+  stroke: #fff;
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+.tmap__caption {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 1.5em;
+  margin: 0 0 10px;
+}
+.tmap__bullets {
+  display: inline-flex;
+  gap: 2px;
+}
+.tmap__bullets span,
+.tmap__swatch {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+.tmap__lines {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 10px;
+  display: grid;
+  gap: 6px;
+}
+.tmap__lines li {
+  display: grid;
+  grid-template-columns: 76px 1fr 44px;
+  align-items: center;
+  gap: 10px;
+}
+.tmap__line-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.tmap__bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--fill);
+  overflow: hidden;
+}
+.tmap__bar span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+}
+.tmap__count {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}

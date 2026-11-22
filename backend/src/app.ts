@@ -20,7 +20,7 @@ import type { Images } from './images.js';
 import { Db, newId } from './db.js';
 import { buildIcs, type IcsEvent } from './ics.js';
 import { recommend } from './recommender.js';
-import { nearestStation } from './live/stations.js';
+import { nearestStation, tStopBingo } from './live/stations.js';
 import { intervalsAround, scheduleFor as openingHoursFor } from './hours.js';
 import { formatBostonTime, bostonParts } from './live/time.js';
 import {
@@ -217,6 +217,12 @@ export function createApp(db: Db, opts: AppOptions = {}) {
         },
         // "Boston Bingo": which neighborhoods you've explored
         bingo: NEIGHBORHOODS.map((n) => ({ id: n.id, label: n.label, visited: visited.has(n.id) })),
+        // ...and the harder mode: every T stop
+        tStops: tStopBingo(
+          completed
+            .map((p) => placeOf(p.placeId))
+            .filter((p): p is NonNullable<typeof p> => !!p && !p.live?.approxLocation),
+        ),
         learnedFavorites: topTags,
       };
     }),
