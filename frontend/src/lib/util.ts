@@ -50,9 +50,10 @@ export function transitDirectionsUrl(name: string, address: string) {
   return `https://www.google.com/maps/dir/?api=1&travelmode=transit&destination=${encodeURIComponent(`${name}, ${address}`)}`;
 }
 
+/** OpenStreetMap embed centered on a point. We draw our own pin on top, at the center. */
 export function osmEmbedUrl(lat: number, lng: number) {
   const dx = 0.006;
   const dy = 0.0035;
   const bbox = [lng - dx, lat - dy, lng + dx, lat + dy].map((n) => n.toFixed(5)).join(',');
-  return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat},${lng}`;
+  return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik`;
 }

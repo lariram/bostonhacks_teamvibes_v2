@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { LockIcon } from '../components/Icons';
-import { PlaceBadge } from '../components/PlaceBadge';
+import { TypeTag } from '../components/PlaceBadge';
 import { StarInput } from '../components/Stars';
 import { TopBar } from '../components/TopBar';
 import { api } from '../lib/api';
@@ -31,7 +31,9 @@ export default function Rate() {
     setBusy(true);
     setError(null);
     try {
-      await api(`/plans/${id}/complete`, { body: { rating, review: review.trim() || undefined, postToFeed: post, caption: caption.trim() || undefined } });
+      await api(`/plans/${id}/complete`, {
+        body: { rating, review: review.trim() || undefined, postToFeed: post, caption: caption.trim() || undefined },
+      });
       navigate(`/plan/${id}/next`, { replace: true });
     } catch (e) {
       setError((e as Error).message);
@@ -42,40 +44,36 @@ export default function Rate() {
   if (!plan) return <div className="screen center muted">Loading…</div>;
 
   return (
-    <div className="screen with-footer">
+    <div className="screen with-footer rate">
       <TopBar back={`/plan/${id}`} />
-      <div className="rate__head">
-        <PlaceBadge place={plan.place} size={72} />
-        <h1 className="title title--sm">How was {plan.place.name}?</h1>
-      </div>
+      <TypeTag type={plan.place.type}>{plan.neighborhoodLabel}</TypeTag>
+      <h1 className="title">How was {plan.place.name}?</h1>
 
       <StarInput value={rating} onChange={setRating} />
 
       <label className="field">
-        <span className="field__label">
-          <LockIcon size={14} /> Private review <span className="muted">(just for your records)</span>
+        <span className="label">
+          <LockIcon size={12} /> Private notes · only you see these
         </span>
-        <textarea className="input textarea" rows={4} placeholder="What stood out? Would you go back?" value={review} onChange={(e) => setReview(e.target.value)} />
+        <textarea className="input textarea" rows={3} placeholder="What stood out? Would you go back?" value={review} onChange={(e) => setReview(e.target.value)} />
       </label>
 
-      <div className={`toggle-card${post ? ' on' : ''}`}>
+      <div className={`toggle-row${post ? ' on' : ''}`}>
         <label className="switch">
           <input type="checkbox" checked={post} onChange={(e) => setPost(e.target.checked)} />
           <span className="switch__track" />
           <span>
-            <strong>Post to the public feed</strong>
-            <span className="small muted block">Shares the spot and your stars. Your review stays private.</span>
+            <strong>Post to the feed</strong>
+            <span className="small muted block">Shares the spot and your stars, not your notes.</span>
           </span>
         </label>
-        {post && (
-          <input className="input" placeholder="Add a caption (optional)" maxLength={280} value={caption} onChange={(e) => setCaption(e.target.value)} />
-        )}
+        {post && <input className="input" placeholder="Caption (optional)" maxLength={280} value={caption} onChange={(e) => setCaption(e.target.value)} />}
       </div>
 
       {error && <p className="error">{error}</p>}
       <footer className="footer-bar">
         <button type="button" className="btn btn--primary btn--block btn--lg" disabled={!rating || busy} onClick={submit}>
-          {busy ? 'Saving…' : rating ? 'Save' : 'Tap a star to rate'}
+          {busy ? 'Saving…' : rating ? 'Save' : 'Tap a star'}
         </button>
       </footer>
     </div>

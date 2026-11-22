@@ -134,6 +134,22 @@ describe('group recommendations', () => {
     expect(groupInterest(mikes, [lover, hater])).toBeGreaterThan(groupInterest(neptune, [lover, hater]));
   });
 
+  it('talks to you as "You" in group reasons', () => {
+    const r = recommend(
+      { location: 'cambridge', type: 'activity', price: 'free', duration: 'short' },
+      {
+        places: PLACES,
+        members: [person('maya', ['Games']), person('me', ['Games']), person('kev', ['History'])],
+        now: NOV,
+        random: fixedRandom,
+        selfId: 'me',
+      },
+    );
+    const text = r.suggestions.flatMap((s) => s.reasons).join(' | ');
+    expect(text).toMatch(/You & maya love games/);
+    expect(text).not.toMatch(/\bme\b/);
+  });
+
   it('says when everyone shares an interest', () => {
     const r = recommend(
       { location: 'cambridge', type: 'event', price: '20to40', duration: 'half', timeOfDay: 'evening' },

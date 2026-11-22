@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { AvatarStack } from '../components/Avatar';
-import { CheckIcon } from '../components/Icons';
+import { ArrowIcon } from '../components/Icons';
+import { crewLine, LINES, TYPE_COLORS } from '../config';
 import { api } from '../lib/api';
 import { useRecSession } from '../lib/session';
 import type { Group, Plan } from '../lib/types';
@@ -37,47 +38,50 @@ export default function Next() {
 
   if (!plan) return <div className="screen center muted">Loading…</div>;
   const group = plan.group;
+  const color = group ? LINES[crewLine(group.id)] : TYPE_COLORS[plan.place.type];
 
   return (
-    <div className="screen next">
-      <div className="next__check">
-        <CheckIcon size={36} />
+    <div className="screen next" style={{ '--line': color } as CSSProperties}>
+      {/* you are here → ? */}
+      <div className="next__line" aria-hidden>
+        <span className="next__done" />
+        <span className="next__track" />
+        <span className="next__q">?</span>
       </div>
-      <h1 className="title center">Nice, you did {plan.place.name}!</h1>
+      <p className="label center">{plan.place.name} ✓</p>
+      <h1 className="title center">Next stop?</h1>
 
       {group ? (
-        <section className="card next__crew">
+        <section className="next__crew">
           <AvatarStack users={group.members} size={44} />
-          <h2 className="subhead center">Want another activity with the same group?</h2>
-          <p className="small center muted">
-            We'll save a group profile and only suggest things that suit all {group.members.length} of you.
+          <p className="center">
+            Stay on with this crew? We'll save a group profile and only suggest things that work for all {group.members.length} of you.
           </p>
           {group.status === 'forming' && (
             <label className="field">
-              <span className="field__label">Name your crew</span>
+              <span className="label">Name the crew</span>
               <input className="input" value={name} maxLength={40} onChange={(e) => setName(e.target.value)} />
             </label>
           )}
           <button type="button" className="btn btn--primary btn--block btn--lg" disabled={busy} onClick={keepCrew}>
-            Yes, keep the crew together
+            Stay with the crew <ArrowIcon size={20} />
           </button>
           <button type="button" className="btn btn--ghost btn--block" onClick={solo}>
-            Go solo for the next one
+            Ride solo
           </button>
         </section>
       ) : (
-        <section className="card">
-          <h2 className="subhead center">Want another solo activity?</h2>
+        <section className="next__crew">
           <button type="button" className="btn btn--primary btn--block btn--lg" onClick={solo}>
-            Yes, find me something
+            Find another <ArrowIcon size={20} />
           </button>
-          <p className="small center muted">Tip: turn on "Form a group" next time to meet people along the way.</p>
+          <p className="small center muted">Tip: pick "Find me a crew" next time to meet people along the way.</p>
         </section>
       )}
 
       <div className="next__links">
-        <Link to="/feed">See the feed</Link>
-        <Link to="/history">My history</Link>
+        <Link to="/feed">Feed</Link>
+        <Link to="/history">My line</Link>
       </div>
     </div>
   );

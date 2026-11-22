@@ -65,6 +65,7 @@ export interface SelfUser extends PublicUser {
   tagWeights: Record<string, number>;
   wantIds: string[];
   lastPrice?: PriceTier;
+  isGuest?: boolean;
 }
 
 export interface Me {
@@ -115,7 +116,7 @@ export interface Group {
   originPlaceId: string;
   createdAt: string;
   members: PublicUser[];
-  sharedInterests: { tag: string; who: string[]; everyone: boolean }[];
+  sharedInterests: { tag: string; who: string[]; whoIds: string[]; everyone: boolean }[];
   budget: PriceTier;
   activities: { placeId: string; byUserId: string; at: string; place: Place }[];
   origin: Place;

@@ -1,16 +1,18 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Avatar } from '../components/Avatar';
-import { SendIcon, SparkleIcon } from '../components/Icons';
-import { PlaceBadge } from '../components/PlaceBadge';
+import { ArrowIcon, SendIcon } from '../components/Icons';
+import { TypeTag } from '../components/PlaceBadge';
 import { TopBar } from '../components/TopBar';
+import { LineTimeline } from '../components/Transit';
+import { crewLine, LINES } from '../config';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { useRecSession } from '../lib/session';
 import type { ChatMessage, Group, Plan } from '../lib/types';
 import { timeAgo } from '../lib/util';
 
-/** Group profile + chat */
+/** Group profile + chat. Every crew rides its own line color. */
 export default function GroupPage() {
   const { id } = useParams();
   const { me, meta } = useAuth();
@@ -64,37 +66,49 @@ export default function GroupPage() {
     navigate('/profile', { replace: true });
   }
 
-  if (error) return <div className="screen"><TopBar back="/profile" /><p className="error">{error}</p></div>;
+  if (error)
+    return (
+      <div className="screen">
+        <TopBar back="/profile" />
+        <p className="error">{error}</p>
+      </div>
+    );
   if (!group) return <div className="screen center muted">Loading…</div>;
 
   const current = group.activities[0];
   const budget = meta?.priceTiers.find((t) => t.id === group.budget)?.label;
+  const color = LINES[crewLine(group.id)];
 
   return (
-    <div className={`screen group-page${tab === 'chat' ? ' with-composer' : ''}`}>
-      <TopBar back="/profile" title={<strong>{group.name}</strong>} />
+    <div className={`screen group-page${tab === 'chat' ? ' with-composer' : ''}`} style={{ '--crew': color } as CSSProperties}>
+      <TopBar back="/profile" />
+      <div className="crew-title">
+        <span className="crew-title__bar" aria-hidden />
+        <div>
+          <h1 className="title title--sm">{group.name}</h1>
+          <p className="small muted">
+            {group.members.length} riders{current ? ` · last stop ${current.place.name}` : ''}
+          </p>
+        </div>
+      </div>
 
       <div className="tabs" role="tablist">
         <button role="tab" aria-selected={tab === 'chat'} className={tab === 'chat' ? 'on' : ''} onClick={() => setTab('chat')}>
           Chat
         </button>
         <button role="tab" aria-selected={tab === 'profile'} className={tab === 'profile' ? 'on' : ''} onClick={() => setTab('profile')}>
-          Group profile
+          Crew profile
         </button>
       </div>
 
-      {current && (
+      {current && current.byUserId !== me?.user.id && (
         <div className="next-up">
-          <PlaceBadge place={current.place} size={40} />
-          <div>
-            <span className="tiny muted">Latest plan</span>
-            <strong>{current.place.name}</strong>
-          </div>
-          {current.byUserId !== me?.user.id && (
-            <button type="button" className="btn btn--sm btn--ghost" onClick={joinCurrent}>
-              I'm in
-            </button>
-          )}
+          <span className="small">
+            Next stop: <strong>{current.place.name}</strong>
+          </span>
+          <button type="button" className="btn btn--sm btn--primary" onClick={joinCurrent}>
+            I'm in
+          </button>
         </div>
       )}
 
@@ -108,7 +122,7 @@ export default function GroupPage() {
                 </li>
               ) : (
                 <li key={m.id} className={`chat__msg${m.mine ? ' mine' : ''}`}>
-                  {!m.mine && m.user && <Avatar user={m.user} size={30} />}
+                  {!m.mine && m.user && <Avatar user={m.user} size={28} />}
                   <div>
                     {!m.mine && <span className="tiny muted">{m.user?.firstName}</span>}
                     <p className="bubble">{m.text}</p>
@@ -120,27 +134,27 @@ export default function GroupPage() {
             <div ref={endRef} />
           </ul>
           <form className="composer" onSubmit={send}>
-            <input className="input" placeholder={`Message ${group.name}`} value={text} onChange={(e) => setText(e.target.value)} maxLength={500} />
+            <input className="input" placeholder="Message the crew" value={text} onChange={(e) => setText(e.target.value)} maxLength={500} />
             <button className="icon-btn icon-btn--filled" aria-label="Send" disabled={!text.trim()}>
-              <SendIcon size={20} />
+              <SendIcon size={18} />
             </button>
           </form>
         </>
       ) : (
         <div className="group-profile">
           {group.status === 'forming' ? (
-            <div className="notice">
-              This crew is just for today's first stop. <button className="link" onClick={keep}>Make it official</button> to save a group profile.
-            </div>
+            <button type="button" className="btn btn--primary btn--block btn--lg" onClick={keep}>
+              Make this crew official
+            </button>
           ) : (
             <button type="button" className="btn btn--primary btn--block btn--lg" onClick={planNext}>
-              <SparkleIcon size={20} /> Plan the next thing together
+              Plan the next stop together <ArrowIcon size={20} />
             </button>
           )}
 
-          <section className="card">
-            <h2 className="subhead">Members</h2>
-            <ul className="crew__list">
+          <section className="panel">
+            <h2 className="label">Riders</h2>
+            <ul className="people">
               {group.members.map((m) => (
                 <li key={m.id}>
                   <Avatar user={m} size={40} />
@@ -154,44 +168,47 @@ export default function GroupPage() {
             </ul>
           </section>
 
-          <section className="card">
-            <h2 className="subhead">What you have in common</h2>
+          <section className="panel">
+            <h2 className="label">What you share</h2>
             {group.sharedInterests.length ? (
-              <ul className="common">
+              <ul className="shared">
                 {group.sharedInterests.slice(0, 8).map((s) => (
                   <li key={s.tag}>
                     <span className={`tag${s.everyone ? ' tag--all' : ''}`}>{s.tag}</span>
-                    <span className="small muted">{s.everyone ? 'everyone' : s.who.join(', ')}</span>
+                    <span className="small muted">
+                      {s.everyone ? 'everyone' : s.whoIds.map((uid, i) => (uid === me?.user.id ? 'You' : s.who[i])).join(', ')}
+                    </span>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="small muted">Still figuring each other out. The algorithm will balance everyone's tastes.</p>
+              <p className="small muted">Still getting to know each other. Picks will balance everyone's tastes.</p>
             )}
             <p className="small">
-              <strong>Group budget:</strong> up to {budget}, so it works for everyone.
+              <span className="muted">Crew budget</span> up to {budget}, so it works for everyone.
             </p>
           </section>
 
-          <section className="card">
-            <h2 className="subhead">Your day together</h2>
-            <ul className="timeline">
-              {group.activities.map((a, i) => (
-                <li key={a.at + i}>
-                  <PlaceBadge place={a.place} size={36} />
-                  <div>
-                    <strong>{a.place.name}</strong>
-                    <p className="tiny muted">{timeAgo(a.at)}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
+          <section className="panel">
+            <h2 className="label">Your day together</h2>
+            <LineTimeline
+              items={group.activities}
+              color={color}
+              isCurrent={(a) => a === group.activities[0]}
+              render={(a) => (
+                <div className="stop-link">
+                  <TypeTag type={a.place.type} />
+                  <strong className="stop-link__name">{a.place.name}</strong>
+                  <span className="tiny muted">{timeAgo(a.at)}</span>
+                </div>
+              )}
+            />
           </section>
 
           <p className="center">
-            <Link to="#" onClick={(e) => { e.preventDefault(); leave(); }} className="small danger">
-              Leave group
-            </Link>
+            <button type="button" className="link danger small" onClick={leave}>
+              Leave crew
+            </button>
           </p>
         </div>
       )}

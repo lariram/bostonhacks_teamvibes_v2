@@ -1,17 +1,18 @@
-import type { CSSProperties, ReactNode } from 'react';
+import type { ReactNode } from 'react';
+import type { LineName } from '../config';
+import { LineDots } from './Transit';
 
 interface ChipProps {
   selected?: boolean;
   disabled?: boolean;
   onClick?: () => void;
   children: ReactNode;
-  /** Override the selected fill color */
-  color?: string;
+  /** T line bullets shown before the label */
+  lines?: LineName[];
   title?: string;
 }
 
-export function Chip({ selected, disabled, onClick, children, color, title }: ChipProps) {
-  const style = selected && color ? ({ '--chip-on': color } as CSSProperties) : undefined;
+export function Chip({ selected, disabled, onClick, children, lines, title }: ChipProps) {
   return (
     <button
       type="button"
@@ -19,30 +20,21 @@ export function Chip({ selected, disabled, onClick, children, color, title }: Ch
       aria-pressed={!!selected}
       disabled={disabled}
       onClick={onClick}
-      style={style}
       title={title}
     >
+      {lines && <LineDots lines={lines} size={8} />}
       {children}
     </button>
   );
 }
 
-interface SectionProps {
-  title: string;
-  hint?: string;
-  children: ReactNode;
-  aside?: ReactNode;
-}
-
-/** A titled block of chips, like the wireframe's "Location / Select one" */
-export function ChipSection({ title, hint, children, aside }: SectionProps) {
+/** Small-caps section label + chips */
+export function ChipSection({ title, hint, children, aside }: { title: string; hint?: string; children: ReactNode; aside?: ReactNode }) {
   return (
     <section className="chip-section">
       <div className="chip-section__head">
-        <div>
-          <h2 className="subhead">{title}</h2>
-          {hint && <p className="hint">{hint}</p>}
-        </div>
+        <h2 className="label">{title}</h2>
+        {hint && <span className="label label--muted">{hint}</span>}
         {aside}
       </div>
       <div className="chips">{children}</div>

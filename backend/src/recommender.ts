@@ -30,6 +30,8 @@ export interface RecContext {
   lastShown?: Place[];
   /** Injectable for deterministic tests */
   random?: () => number;
+  /** The person asking, so group reasons can say "You" instead of their name */
+  selfId?: string;
 }
 
 export interface RecResult {
@@ -239,12 +241,17 @@ function buildReasons(place: Place, req: RecRequest, ctx: RecContext, budget: Pr
     if (everyone.length) {
       reasons.push(`Everyone's into ${joinNice(everyone.slice(0, 2))}`);
     } else {
-      // Explain who this one is for
+      // Explain who this one is for ("You & Maya love live music")
+      const nameOf = (m: TasteProfile) => (m.id === ctx.selfId ? 'You' : m.firstName);
       const fans = place.tags
-        .map((t) => ({ t, who: members.filter((m) => m.prefs.has(t)).map((m) => m.firstName) }))
+        .map((t) => ({ t, who: members.filter((m) => m.prefs.has(t)).map(nameOf) }))
         .filter((x) => x.who.length > 0)
         .sort((a, b) => b.who.length - a.who.length)[0];
-      if (fans) reasons.push(`${joinNice(fans.who.slice(0, 3))} love${fans.who.length === 1 ? 's' : ''} ${lowerTag(fans.t)}`);
+      if (fans) {
+        const who = [...fans.who].sort((a, b) => Number(b === 'You') - Number(a === 'You')).slice(0, 3);
+        const verb = who.length === 1 && who[0] !== 'You' ? 'loves' : 'love';
+        reasons.push(`${joinNice(who)} ${verb} ${lowerTag(fans.t)}`);
+      }
     }
     if (members.every((m) => !m.doneIds.has(place.id))) reasons.push('New to all of you');
     if (budget !== req.price) reasons.push("Fits everyone's budget");

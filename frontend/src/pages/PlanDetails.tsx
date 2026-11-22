@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Avatar } from '../components/Avatar';
-import { ChatIcon, ClockIcon, LockIcon, PinIcon } from '../components/Icons';
-import { PlaceBadge, TypePill } from '../components/PlaceBadge';
+import { ArrowIcon, ChatIcon, LockIcon } from '../components/Icons';
 import { Stars } from '../components/Stars';
 import { TopBar } from '../components/TopBar';
+import { LineDot, LineDots, StationSign } from '../components/Transit';
+import { crewLine, LINES, linesFromStop, TYPE_COLORS, TYPE_LINE } from '../config';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import type { Plan } from '../lib/types';
@@ -22,95 +23,83 @@ export default function PlanDetails() {
     api<Plan>(`/plans/${id}`).then(setPlan).catch((e) => setError(e.message));
   }, [id]);
 
-  if (error) return <div className="screen"><TopBar back="/history" /><p className="error">{error}</p></div>;
+  if (error)
+    return (
+      <div className="screen">
+        <TopBar back="/history" />
+        <p className="error">{error}</p>
+      </div>
+    );
   if (!plan) return <div className="screen center muted">Loading…</div>;
 
   const { place, group } = plan;
   const done = plan.status === 'completed';
   const others = group?.members.filter((m) => m.id !== me?.user.id) ?? [];
   const price = meta?.priceTiers.find((t) => t.id === place.price)?.label;
+  const crewColor = group ? LINES[crewLine(group.id)] : undefined;
 
   return (
     <div className="screen with-footer details">
-      <TopBar back={true} title={done ? 'Completed' : "You're going!"} />
+      <TopBar back={true} title={<span className="label label--muted">{done ? 'Completed' : 'Now boarding'}</span>} />
+
+      <StationSign
+        color={TYPE_COLORS[place.type]}
+        kicker={
+          <>
+            <LineDot line={TYPE_LINE[place.type]} size={9} /> {place.type} · {plan.neighborhoodLabel}
+          </>
+        }
+        title={place.name}
+      >
+        <LineDots lines={linesFromStop(place.tStop)} size={12} />
+        <span>{place.tStop}</span>
+      </StationSign>
 
       <div className="map">
         <iframe title={`Map of ${place.name}`} src={osmEmbedUrl(place.lat, place.lng)} loading="lazy" />
+        <span className="map__pin" style={{ '--pin': TYPE_COLORS[place.type] } as CSSProperties} aria-hidden />
         <a className="map__open" href={mapsSearchUrl(place.name, place.address)} target="_blank" rel="noreferrer">
-          <PinIcon size={16} /> Open in Maps
+          Open in Maps <ArrowIcon size={14} />
         </a>
       </div>
 
-      <div className="details__head">
-        <PlaceBadge place={place} size={64} />
+      <dl className="facts">
         <div>
-          <TypePill type={place.type} />
-          <h1 className="title title--sm">{place.name}</h1>
-          <p className="muted">{plan.neighborhoodLabel}</p>
+          <dt className="label">Address</dt>
+          <dd>
+            {place.address}
+            <a href={transitDirectionsUrl(place.name, place.address)} target="_blank" rel="noreferrer" className="facts__link">
+              Directions by T <ArrowIcon size={14} />
+            </a>
+          </dd>
         </div>
+        <div>
+          <dt className="label">Cost</dt>
+          <dd>
+            {place.priceNote} <span className="muted">({price})</span>
+          </dd>
+        </div>
+        <div>
+          <dt className="label">Time</dt>
+          <dd>
+            ~{formatMinutes(place.minutes)} <span className="muted">· best {place.times.map((t) => TIME_LABEL[t].toLowerCase()).join(', ')}</span>
+          </dd>
+        </div>
+      </dl>
+
+      <p className="details__blurb">{place.blurb}</p>
+      <div className="local-tip">
+        <span className="label">Local tip</span>
+        <p>{place.localTip}</p>
       </div>
 
-      <section className="card">
-        <div className="row">
-          <PinIcon />
-          <div>
-            <strong>{place.address}</strong>
-            <div className="row-links">
-              <a href={mapsSearchUrl(place.name, place.address)} target="_blank" rel="noreferrer">
-                Open in Maps
-              </a>
-              <a href={transitDirectionsUrl(place.name, place.address)} target="_blank" rel="noreferrer">
-                Transit directions
-              </a>
-            </div>
-          </div>
-        </div>
-        <div className="row">
-          <span className="t-logo" aria-hidden>T</span>
-          <div>
-            <strong>{place.tStop}</strong>
-            <p className="small muted">Nearest T</p>
-          </div>
-        </div>
-        <div className="row">
-          <ClockIcon />
-          <div>
-            <strong>~{formatMinutes(place.minutes)}</strong>
-            <p className="small muted">Best: {place.times.map((t) => TIME_LABEL[t]).join(', ')}</p>
-          </div>
-        </div>
-        <div className="row">
-          <span className="dollar" aria-hidden>$</span>
-          <div>
-            <strong>{place.priceNote}</strong>
-            <p className="small muted">{price}</p>
-          </div>
-        </div>
-      </section>
-
-      <section className="card">
-        <h2 className="subhead">Details</h2>
-        <p>{place.blurb}</p>
-        <div className="local-tip">
-          <span className="local-tip__label">Local tip</span>
-          <p>{place.localTip}</p>
-        </div>
-        <div className="chips chips--static">
-          {place.tags.map((t) => (
-            <span key={t} className="tag">
-              {t}
-            </span>
-          ))}
-        </div>
-      </section>
-
       {group && (
-        <section className="card crew">
+        <section className="crew" style={{ '--crew': crewColor } as CSSProperties}>
           <div className="crew__head">
-            <h2 className="subhead">{group.status === 'forming' ? 'Your crew for this' : group.name}</h2>
-            <span className="badge">{group.members.length} people</span>
+            <span className="label">{group.status === 'forming' ? 'Your crew for this stop' : group.name}</span>
+            <span className="label label--muted">{group.members.length} riders</span>
           </div>
-          <ul className="crew__list">
+          <ul className="people">
             {others.map((m) => (
               <li key={m.id}>
                 <Avatar user={m} size={40} />
@@ -123,25 +112,24 @@ export default function PlanDetails() {
           </ul>
           {group.sharedInterests.length > 0 && (
             <p className="small">
-              <strong>In common:</strong> {group.sharedInterests.slice(0, 4).map((s) => s.tag).join(', ')}
+              <span className="muted">In common:</span> {group.sharedInterests.slice(0, 4).map((s) => s.tag).join(' · ')}
             </p>
           )}
           <Link to={`/groups/${group.id}`} className="btn btn--ghost btn--block">
-            <ChatIcon size={20} /> Open group chat
+            <ChatIcon size={18} /> Crew chat
           </Link>
           <p className="tiny muted center">Meet in public, and let a friend know where you're headed.</p>
         </section>
       )}
 
       {done && (
-        <section className="card">
-          <h2 className="subhead">Your rating</h2>
-          <Stars value={plan.rating ?? 0} size={22} />
+        <section className="your-rating">
+          <span className="label">Your rating</span>
+          <Stars value={plan.rating ?? 0} size={18} />
           {plan.review && (
-            <div className="private">
-              <LockIcon size={14} /> <span className="small muted">Only you can see this</span>
-              <p>{plan.review}</p>
-            </div>
+            <p className="private">
+              <LockIcon size={13} /> {plan.review}
+            </p>
           )}
         </section>
       )}
@@ -149,11 +137,11 @@ export default function PlanDetails() {
       <footer className="footer-bar">
         {done ? (
           <button type="button" className="btn btn--primary btn--block btn--lg" onClick={() => navigate(`/plan/${plan.id}/next`)}>
-            What's next?
+            Next stop <ArrowIcon size={20} />
           </button>
         ) : (
           <button type="button" className="btn btn--primary btn--block btn--lg" onClick={() => navigate(`/plan/${plan.id}/rate`)}>
-            Finished? Rate it
+            I'm done, rate it
           </button>
         )}
       </footer>

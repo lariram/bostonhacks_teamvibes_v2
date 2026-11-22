@@ -73,6 +73,8 @@ export interface User {
   lastPrice?: PriceTier;
   /** Simulated locals that make the demo feel alive */
   isDemo?: boolean;
+  /** One-tap demo account (no email/password) */
+  isGuest?: boolean;
   avatarColor: string;
   createdAt: string;
 }

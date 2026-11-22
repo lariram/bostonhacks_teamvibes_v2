@@ -130,3 +130,9 @@ export const StarIcon = ({ filled, ...p }: P & { filled?: boolean }) => (
     <path d="m12 3.6 2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8L12 3.6Z" />
   </svg>
 );
+
+export const ArrowIcon = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M5 12h14M13 6l6 6-6 6" />
+  </svg>
+);

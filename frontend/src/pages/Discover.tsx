@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { AvatarStack } from '../components/Avatar';
-import { Chip, ChipSection } from '../components/Chip';
-import { SparkleIcon, UsersIcon } from '../components/Icons';
-import { TYPE_COLORS } from '../config';
+import { Chip } from '../components/Chip';
+import { ArrowIcon } from '../components/Icons';
+import { crewLine, LINES, NEIGHBORHOOD_LINES, TYPE_COLORS, TYPE_LINE } from '../config';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { useRecSession } from '../lib/session';
@@ -12,7 +12,21 @@ import { currentTimeOfDay, TIME_LABEL } from '../lib/util';
 
 type When = 'now' | TimeOfDay;
 
-/** "Generate Recommendations" */
+/** One stop on the route. The line fills in as you answer. */
+function Stop({ label, value, done, children }: { label: string; value?: string; done: boolean; children: ReactNode }) {
+  return (
+    <li className={`route__stop${done ? ' is-done' : ''}`}>
+      <span className="route__node" aria-hidden />
+      <div className="route__head">
+        <h2 className="label">{label}</h2>
+        {value && <span className="route__value">{value}</span>}
+      </div>
+      <div className="chips">{children}</div>
+    </li>
+  );
+}
+
+/** "Generate Recommendations": four quick stops, then go */
 export default function Discover() {
   const { meta, me } = useAuth();
   const session = useRecSession();
@@ -21,7 +35,7 @@ export default function Discover() {
   const groupId = params.get('group');
   const [group, setGroup] = useState<Group | null>(null);
 
-  // Start from the last request so "another activity" is one tap away
+  // Start from the last request so "another one" is one tap away
   const last = session.request;
   const [location, setLocation] = useState<string | null>(last?.location ?? null);
   const [type, setType] = useState<PlaceType | null>(last?.type ?? null);
@@ -46,6 +60,7 @@ export default function Discover() {
   }, [group]);
 
   const ready = location && type && price && duration;
+  const left = [location, type, price, duration].filter((x) => !x).length;
 
   async function go() {
     if (!ready) return;
@@ -62,116 +77,121 @@ export default function Discover() {
   }
 
   if (!meta) return <div className="screen center muted">Loading…</div>;
+  const label = (list: { id: string; label: string }[], id: string | null) => list.find((x) => x.id === id)?.label;
+  const lineColor = type ? TYPE_COLORS[type] : LINES.silver;
+  const crewColor = group ? LINES[crewLine(group.id)] : undefined;
 
   return (
     <div className="screen with-footer">
-      <h1 className="title">Generate Recommendations</h1>
-
       {group ? (
-        <div className="group-banner">
-          <AvatarStack users={group.members} size={30} />
+        <div className="crew-banner" style={{ '--crew': crewColor } as CSSProperties}>
+          <AvatarStack users={group.members} size={28} />
           <div>
-            <strong>Planning for {group.name}</strong>
-            <p className="small">
-              Only things that suit all {group.members.length} of you.{' '}
+            <p className="label">Planning for {group.name}</p>
+            <p className="small muted">
+              Only picks that work for all {group.members.length}.{' '}
               <Link to="/discover" replace>
-                Plan solo instead
+                Ride solo
               </Link>
             </p>
           </div>
         </div>
       ) : (
-        <p className="lede">
-          Hi {me?.user.firstName}! Where are you headed?
-        </p>
+        <p className="label">Hi, {me?.user.firstName}</p>
       )}
+      <h1 className="title">{group ? 'Where to next?' : 'Where to?'}</h1>
+      <p className="lede">Four quick stops. We'll do the deciding.</p>
 
-      <ChipSection title="Location" hint="Select one">
-        {meta.neighborhoods.map((n) => (
-          <Chip key={n.id} selected={location === n.id} onClick={() => setLocation(n.id)}>
-            {n.label}
+      <ol className="route" style={{ '--line': lineColor } as CSSProperties}>
+        <Stop label="Where" value={location === 'anywhere' ? 'Anywhere' : label(meta.neighborhoods, location)} done={!!location}>
+          {meta.neighborhoods.map((n) => (
+            <Chip key={n.id} selected={location === n.id} lines={NEIGHBORHOOD_LINES[n.id]} onClick={() => setLocation(n.id)}>
+              {n.label.replace(' Boston', '')}
+            </Chip>
+          ))}
+          <Chip selected={location === 'anywhere'} onClick={() => setLocation('anywhere')}>
+            Surprise me
           </Chip>
-        ))}
-        <Chip selected={location === 'anywhere'} onClick={() => setLocation('anywhere')}>
-          Anywhere 🗺️
-        </Chip>
-      </ChipSection>
+        </Stop>
 
-      <ChipSection title="Type" hint="Select one">
-        {meta.types.map((t) => (
-          <Chip key={t.id} selected={type === t.id} color={TYPE_COLORS[t.id]} onClick={() => setType(t.id)}>
-            {t.label}
-          </Chip>
-        ))}
-      </ChipSection>
+        <Stop label="What" value={label(meta.types, type)} done={!!type}>
+          {meta.types.map((t) => (
+            <Chip key={t.id} selected={type === t.id} lines={[TYPE_LINE[t.id]]} onClick={() => setType(t.id)}>
+              {t.label}
+            </Chip>
+          ))}
+        </Stop>
 
-      <ChipSection
-        title="Price Range"
-        hint={group ? `Capped at ${meta.priceTiers[groupBudgetRank]?.label} so it works for everyone` : 'Select one'}
-      >
-        {meta.priceTiers.map((t, i) => (
-          <Chip
-            key={t.id}
-            selected={price === t.id}
-            disabled={i > groupBudgetRank}
-            onClick={() => setPrice(t.id)}
-            title={i > groupBudgetRank ? "Over someone in the crew's budget" : undefined}
-          >
-            {t.label}
-          </Chip>
-        ))}
-      </ChipSection>
+        <Stop
+          label="Budget"
+          value={group ? `Crew max ${meta.priceTiers[groupBudgetRank]?.label}` : label(meta.priceTiers, price)}
+          done={!!price}
+        >
+          {meta.priceTiers.map((t, i) => (
+            <Chip
+              key={t.id}
+              selected={price === t.id}
+              disabled={i > groupBudgetRank}
+              onClick={() => setPrice(t.id)}
+              title={i > groupBudgetRank ? "Over someone in the crew's budget" : undefined}
+            >
+              {t.label}
+            </Chip>
+          ))}
+        </Stop>
 
-      <ChipSection title="Time frame" hint="When are you going?">
-        <Chip selected={when === 'now'} onClick={() => setWhen('now')}>
-          Right now
-        </Chip>
-        {meta.timesOfDay.map((t) => (
-          <Chip key={t.id} selected={when === t.id} onClick={() => setWhen(t.id)}>
-            {t.label}
+        <Stop
+          label="When"
+          value={duration ? `${when === 'now' ? 'Now' : TIME_LABEL[when]} · ${label(meta.durations, duration)}` : undefined}
+          done={!!duration}
+        >
+          <Chip selected={when === 'now'} onClick={() => setWhen('now')}>
+            Now
           </Chip>
-        ))}
-      </ChipSection>
-      <div className="chips chips--follow">
-        <p className="hint full">How long do you have?</p>
-        {meta.durations.map((d) => (
-          <Chip key={d.id} selected={duration === d.id} onClick={() => setDuration(d.id)}>
-            {d.label}
-          </Chip>
-        ))}
-      </div>
+          {meta.timesOfDay.map((t) => (
+            <Chip key={t.id} selected={when === t.id} onClick={() => setWhen(t.id)}>
+              {t.label}
+            </Chip>
+          ))}
+          <span className="chips__break" />
+          {meta.durations.map((d) => (
+            <Chip key={d.id} selected={duration === d.id} onClick={() => setDuration(d.id)}>
+              {d.label}
+            </Chip>
+          ))}
+        </Stop>
 
-      {!group && (
-        <section className={`group-toggle${groupMode ? ' on' : ''}`}>
-          <div className="group-toggle__icon">
-            <UsersIcon size={26} />
-          </div>
-          <div className="group-toggle__text">
-            <h2 className="subhead">Form a group?</h2>
-            <p className="small">
-              We'll match you with Bostonians heading to the same spot. Like the crew? Keep them for the rest of the day.
+        {!group && (
+          <li className="route__stop is-done route__stop--last">
+            <span className="route__node" aria-hidden />
+            <div className="route__head">
+              <h2 className="label">Who</h2>
+            </div>
+            <div className="segmented" role="radiogroup" aria-label="Who's coming">
+              <button type="button" role="radio" aria-checked={!groupMode} className={!groupMode ? 'on' : ''} onClick={() => setGroupMode(false)}>
+                Just me
+              </button>
+              <button type="button" role="radio" aria-checked={groupMode} className={groupMode ? 'on' : ''} onClick={() => setGroupMode(true)}>
+                Find me a crew
+              </button>
+            </div>
+            <p className="small muted route__hint">
+              {groupMode
+                ? "We'll match you with Bostonians headed to the same spot. Click with them? Keep the crew for the rest of the day."
+                : 'Want company? Find a crew and meet people who are into the same things.'}
             </p>
-          </div>
-          <div className="yesno" role="radiogroup" aria-label="Form a group">
-            <button type="button" role="radio" aria-checked={groupMode} className={groupMode ? 'on' : ''} onClick={() => setGroupMode(true)}>
-              Yes
-            </button>
-            <button type="button" role="radio" aria-checked={!groupMode} className={!groupMode ? 'on' : ''} onClick={() => setGroupMode(false)}>
-              No
-            </button>
-          </div>
-        </section>
-      )}
+          </li>
+        )}
+      </ol>
 
       {session.error && <p className="error">{session.error}</p>}
 
       <footer className="footer-bar">
         <button type="button" className="btn btn--primary btn--block btn--lg" disabled={!ready || session.loading} onClick={go}>
-          <SparkleIcon size={20} />
-          {session.loading ? 'Finding your spots…' : ready ? 'Generate' : 'Pick location, type, price & time'}
+          {session.loading ? 'Finding your stop…' : ready ? 'Show me two' : `${left} more ${left === 1 ? 'stop' : 'stops'}`}
+          {ready && !session.loading && <ArrowIcon size={20} />}
         </button>
       </footer>
-      {when === 'now' && <p className="sr-only">Right now counts as {TIME_LABEL[nowBucket]}</p>}
     </div>
   );
 }

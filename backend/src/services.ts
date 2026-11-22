@@ -196,11 +196,16 @@ export function groupBudget(members: User[]): PriceTier {
 /** The "group profile": who's in it and what they have in common. */
 export function groupProfile(db: Db, g: Group) {
   const members = groupMembers(db, g);
-  const counts: Record<string, string[]> = {};
-  for (const m of members) for (const t of allPrefs(m)) (counts[t] ??= []).push(m.fullName.split(' ')[0]);
+  const counts: Record<string, User[]> = {};
+  for (const m of members) for (const t of allPrefs(m)) (counts[t] ??= []).push(m);
   const sharedInterests = Object.entries(counts)
     .filter(([, who]) => who.length >= 2)
-    .map(([tag, who]) => ({ tag, who, everyone: who.length === members.length }))
+    .map(([tag, who]) => ({
+      tag,
+      who: who.map((m) => m.fullName.split(' ')[0]),
+      whoIds: who.map((m) => m.id),
+      everyone: who.length === members.length,
+    }))
     .sort((a, b) => b.who.length - a.who.length);
 
   return {

@@ -102,4 +102,4 @@ export const PREFERENCE_TAGS: Record<PlaceType, string[]> = {
 
 export const MAX_PREFS_PER_CATEGORY = 3;
 
-export const AVATAR_COLORS = ['#CB2930', '#002A5C', '#00834A', '#80276C', '#EE8B00', '#5B6770'];
+export const AVATAR_COLORS = ['#DA291C', '#00843D', '#003DA5', '#80276C', '#008EAA', '#4A5257'];

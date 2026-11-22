@@ -5,12 +5,20 @@ import { Wordmark } from '../components/Wordmark';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
 
+const FIELDS = [
+  { key: 'fullName', label: 'Full name', autoComplete: 'name' },
+  { key: 'age', label: 'Age', inputMode: 'numeric' as const },
+  { key: 'username', label: 'Public username', autoComplete: 'username' },
+  { key: 'email', label: 'Email', type: 'email', autoComplete: 'email' },
+  { key: 'password', label: 'Password', type: 'password', autoComplete: 'new-password' },
+  { key: 'confirm', label: 'Confirm password', type: 'password', autoComplete: 'new-password' },
+] as const;
+
 export default function Signup() {
   const { signIn } = useAuth();
-  const [form, setForm] = useState({ fullName: '', age: '', username: '', email: '', password: '', confirm: '' });
+  const [form, setForm] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [k]: e.target.value });
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -18,13 +26,10 @@ export default function Signup() {
     setBusy(true);
     setError(null);
     try {
-      const { token } = await api<{ token: string }>('/auth/signup', {
-        body: { ...form, age: Number(form.age) },
-      });
+      const { token } = await api<{ token: string }>('/auth/signup', { body: { ...form, age: Number(form.age) } });
       await signIn(token, '/onboarding'); // the public-route guard sends us there
     } catch (err) {
       setError((err as Error).message);
-    } finally {
       setBusy(false);
     }
   }
@@ -32,23 +37,29 @@ export default function Signup() {
   return (
     <div className="screen auth">
       <TopBar back="/" />
-      <div className="auth__brand">
-        <Wordmark />
-      </div>
+      <Wordmark size={36} />
+      <h1 className="title">Get your pass.</h1>
       <form className="form" onSubmit={submit}>
-        <input className="input" placeholder="Full Name" autoComplete="name" value={form.fullName} onChange={set('fullName')} required />
-        <input className="input" placeholder="Age" inputMode="numeric" value={form.age} onChange={set('age')} required />
-        <div className="form__gap" />
-        <input className="input" placeholder="Public username" autoComplete="username" value={form.username} onChange={set('username')} required />
-        <input className="input" type="email" placeholder="Email Address" autoComplete="email" value={form.email} onChange={set('email')} required />
-        <input className="input" type="password" placeholder="Password" autoComplete="new-password" value={form.password} onChange={set('password')} required />
-        <input className="input" type="password" placeholder="Confirm Password" autoComplete="new-password" value={form.confirm} onChange={set('confirm')} required />
+        {FIELDS.map((f) => (
+          <label key={f.key} className="field">
+            <span className="label">{f.label}</span>
+            <input
+              className="input"
+              type={'type' in f ? f.type : 'text'}
+              inputMode={'inputMode' in f ? f.inputMode : undefined}
+              autoComplete={'autoComplete' in f ? f.autoComplete : undefined}
+              value={form[f.key] ?? ''}
+              onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
+              required
+            />
+          </label>
+        ))}
         {error && <p className="error">{error}</p>}
-        <button className="btn btn--primary btn--lg" disabled={busy}>
-          {busy ? 'Creating…' : 'Create Account'}
+        <button className="btn btn--primary btn--lg btn--block" disabled={busy}>
+          {busy ? 'Creating…' : 'Create account'}
         </button>
-        <p className="muted center small">
-          You need to be 18+ to join group meetups. Already have an account? <Link to="/login">Log in</Link>
+        <p className="muted small center">
+          18+ to join crews. Have an account? <Link to="/login">Log in</Link>
         </p>
       </form>
     </div>

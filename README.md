@@ -1,24 +1,34 @@
-# common. (Boston, better together)
+# common.
 
-**BostonHacks 2026 · Team Vibes · Track: Boundless Boston**
+**Two picks. One crew. Your next stop.**
 
-Boston is America's college city: 35+ campuses, a quarter-million students, and most of them never leave their bubble. BU kids stay on Comm Ave, Harvard kids stay in the Square, and the people who've lived here their whole lives rarely meet either.
+BostonHacks 2026 · Team Vibes · Track: **Boundless Boston**
 
-**common** fixes both problems at once:
+Boston is America's college city: 35+ campuses, a quarter-million students, and most of them never leave their bubble. BU stays on Comm Ave, Harvard stays in the Square, and the people who've lived here their whole lives rarely meet either. On top of that, "what should we do?" is its own kind of exhausting.
 
-1. **Tell it what you've got.** Pick a neighborhood, event/activity/food, a budget (Free → $40+) and how much time you have. It gives you **two** great options, curated from real Boston spots with T stops and local tips. Not into either? Regenerate, and tell it what you'd rather have.
-2. **Turn on "Form a group."** When you pick a spot, you're matched with other Bostonians heading there. A crew forms around your first stop of the day.
-3. **Keep the crew.** Liked them? Keep the group together for the rest of the day. The group gets its own **group profile**, and the algorithm only suggests things that work for *every* member's tastes and budget.
+**common** kills the decision paralysis and the bubble at the same time:
 
-Rate what you did (5 stars + a private review), post it to the public feed, and fill in your **Boston Bingo** card as you explore all 12 neighborhoods.
+1. **Four quick stops:** where, what (event / activity / food), budget, and when. You get **two** options, A or B. That's the whole decision. Not feeling either? Tell it one thing ("Japanese", "cheaper") and get two more.
+2. **"Find me a crew."** When you take a pick, you're matched with other Bostonians headed to the same spot.
+3. **Stay on with the crew.** Clicked with them? Keep the group for the rest of the day. The crew gets its own **group profile**, and picks only include things that work for *every* rider's tastes and budget.
 
-> Working name. Change `APP_NAME` in `frontend/src/config.ts` and it updates everywhere.
+Rate each stop (5 stars + private notes), post it to the feed, and watch **Your Boston**, a T-style map of all 12 neighborhoods, light up as you explore.
+
+> *Named for Boston Common, where America's first subway opened in 1897.* Working name: change `APP_NAME` in `frontend/src/config.ts`.
 
 ---
 
 ## Quick start
 
 Requires **Node 20.19+ or 22.12+**.
+
+```bash
+git clone https://github.com/lariram/bostonhacks_teamvibes_v2
+```
+
+```bash
+cd bostonhacks_teamvibes_v2
+```
 
 ```bash
 npm install
@@ -28,15 +38,13 @@ npm install
 npm run dev
 ```
 
-Then open **http://localhost:5173** (best in a phone-sized window or your browser's device toolbar).
+Open **http://localhost:5173** and tap **Try it as a guest**. No sign-up needed. (Best in a phone-sized window: dev tools → device toolbar.)
 
-- API runs on `:3001`, web on `:5173` (Vite proxies `/api`).
-- Data is stored in `backend/data/db.json` (gitignored). Delete it to reset. The app re-seeds demo locals and feed posts on start.
-
-Other scripts:
+- API runs on `:3001`, web on `:5173` (Vite proxies `/api`). To use it on your phone, open the `Network:` URL that `npm run dev` prints (same Wi-Fi).
+- Data is stored in `backend/data/db.json` (gitignored). Delete it to reset; demo locals and starter feed posts re-seed on start.
 
 ```bash
-npm test            # backend unit + API tests (vitest)
+npm test            # 21 backend tests: algorithm + end-to-end API flow
 npm run typecheck   # both apps
 npm run build       # production build of the web app
 npm start           # one server on :3001 serving the API + built web app
@@ -44,43 +52,64 @@ npm start           # one server on :3001 serving the API + built web app
 
 ## 2-minute demo script
 
-1. **Create Account** → **Choose Preferences** (e.g. Chinese, Dessert, Live music, Nature).
-2. **Discover**: Chinatown · Food · $10–$20 · Evening · 1–2 hrs · **Form a group: Yes** → Generate.
-3. Point out the **reason chips** ("You're into Chinese", "Right in Chinatown"). The algorithm explains itself.
-4. **Generate new recommendations** → the feedback sheet → tap "Japanese" → it finds hot pot and flags it as *a little over budget* instead of ignoring you.
-5. **Pick one** → map, address, nearest T, local tip, and **your crew** (3 Bostonians from different schools) → open the **group chat**.
-6. **Finished? Rate it** → 5 stars, private review, post to feed.
-7. **"Want another activity with the same group?"** → name the crew → the generator now shows *"Capped at $10–$20 so it works for everyone"* and suggestions say things like *"Lari, Maya & Hana love live music"*.
-8. **Feed** (save a spot → it boosts your future recs), **History**, **Profile** (Boston Bingo, your crews, "We've noticed you love…").
+1. **Try it as a guest** → pick a few interests (Chinese, Dessert, Live music…) → Continue.
+2. **Where to?** Chinatown · Food · $10–$20 · Evening · 1–2 hrs · **Find me a crew**. Watch the route line fill in with the Orange Line color as you answer. → *Show me two*
+3. **A or B.** Point out the "why" line ("You're into Chinese · Right in Chinatown"): the algorithm explains itself.
+4. **Neither. Show me two more** → tap "Japanese" → it finds hot pot and flags it as *a little over budget* instead of ignoring you.
+5. **Take A** → station sign, map, address, nearest T, local tip, and **your crew** (3 Bostonians from different schools) → **Crew chat**.
+6. **I'm done, rate it** → stars, private notes, post to feed.
+7. **Next stop?** → **Stay with the crew** → the budget is now *"Crew max $10–$20"*, and picks say things like *"You, Maya & Hana love live music"*.
+8. **Feed** (save a spot → it boosts your picks) → **My line** (your history as a transit line) → **Profile** (the *Your Boston* map lights up).
+
+## Design
+
+The whole visual system is borrowed from the T: black-and-white Helvetica signage, with **MBTA line colors as the only accents, and every color means something.**
+
+| Color | Means |
+| --- | --- |
+| Red Line `#DA291C` | Events |
+| Green Line `#00843D` | Activities |
+| Orange Line `#ED8B00` | Food |
+| Bus yellow `#FFC72C` | Local tips, heads-ups, star ratings |
+| Each crew | Gets its own line color (stable per crew) |
+| You | Your history is your own line, in your color |
+
+Signature pieces (all in `frontend/src/components/Transit.tsx`):
+- **Brand mark:** four T lines converging on one station. *common* = where Boston's lines meet.
+- **The route:** the planner is a line diagram. Each question is a stop, and the line fills in as you answer.
+- **The fork:** results open with one track splitting into branches **A** and **B**, like the Green Line branches.
+- **Station sign:** every place gets a black platform-style sign with its nearest T line bullets.
+- **My line / Your day together:** history and a crew's day are drawn as stations on a line, with the current stop pulsing.
+- **Your Boston:** a schematic T-style map of the 12 neighborhoods that fills in as you explore (the mentor's "Boston bingo" idea).
+- **Neighborhood chips** carry real line bullets (Cambridge = Red, Seaport = Silver, Downtown = all four).
+
+The minimalism is on purpose: the app exists to remove decisions, so every screen asks for one thing.
+
+*common is a student project and is not affiliated with the MBTA. The line colors are a nod to the T.*
 
 ## How the recommendation algorithm works
 
 `backend/src/recommender.ts` is pure functions, fully unit-tested.
 
-**Scoring.** Each candidate gets
-`0.40·interest + 0.25·location + 0.15·price fit + 0.10·duration fit`
-plus small boosts for community ratings, in-season items, and anything you asked for in feedback, plus a little jitter so regenerate feels alive.
+**Scoring:** `0.40·interest + 0.25·location + 0.15·price fit + 0.10·duration fit`, plus small boosts for community ratings, in-season items, and anything you asked for in feedback, plus a little jitter so "two more" feels alive.
 
-- **Interest** comes from your onboarding tags, plus **learned weights**: 5★ ratings push a place's tags up, 1★ pushes them down; liking or saving feed posts nudges them too.
+- **Interest** comes from your onboarding tags plus **learned weights**: 5★ ratings push a place's tags up, 1★ pushes them down; liking or saving feed posts nudges them too.
 - **Location**: same neighborhood > adjacent (a quick T hop) > elsewhere.
 - Out-of-season things (Swan Boats in November) are never suggested.
 
-**Constraint relaxation.** If the exact filters can't produce two options, it loosens one step at a time and **labels what it stretched**:
-exact → ignore time-of-day / allow a slightly longer outing → anywhere in the city → one tier over budget → repeats.
+**Constraint relaxation:** if the exact filters can't produce two options, it loosens one step at a time and **labels what it stretched**: exact → time-of-day / slightly longer → anywhere in the city → one tier over budget → repeats.
 
-**Diversity.** Pick #2 is the best option that *differs* from pick #1 (neighborhood or vibe) when it's close in score, so you get a real choice.
+**Diversity:** B is the best option that *differs* from A (neighborhood or vibe) when it's close in score, so it's a real choice.
 
-**Groups.** Every member's interest score is computed separately, then combined as
-`0.6·(least-happy member) + 0.4·(average)`
-so nobody gets dragged somewhere they'd hate. The budget is capped at the **lowest** member's comfort level, and anywhere the group has already been is skipped.
+**Crews:** every rider's interest is scored separately and combined as `0.6·(least-happy rider) + 0.4·(average)`, so nobody gets dragged somewhere they'd hate. The budget is capped at the lowest rider's comfort level, and anywhere the crew has already been is skipped.
 
-**Crew matching** (`services.ts → matchCrew`). If someone else is forming a crew at the same spot (within 6 hours), you join theirs. That's how two real users get matched. Otherwise a new crew starts and invites the most compatible locals (shared interests, similar age, would like this place).
+**Crew matching** (`services.ts → matchCrew`): if someone else is forming a crew at the same spot (within 6 hours), you join theirs. That's how two real users get matched. Otherwise a new crew starts and invites the most compatible locals (shared interests, similar age, would like this place).
 
 ## Project structure
 
 ```
 backend/                 Node + Express + TypeScript
-  src/data/places.ts     ~100 curated Boston spots (address, lat/lng, T stop, tips)
+  src/data/places.ts     106 curated Boston spots (address, lat/lng, T stop, local tip)
   src/data/meta.ts       neighborhoods + adjacency, price tiers, durations, tags
   src/data/seedUsers.ts  simulated locals + starter feed posts (for demos)
   src/recommender.ts     the algorithm
@@ -88,39 +117,40 @@ backend/                 Node + Express + TypeScript
   src/app.ts             REST API
   test/                  vitest: algorithm + full end-to-end API flow
 frontend/                React + Vite + TypeScript (mobile-first)
+  src/config.ts          brand name + MBTA color system
+  src/components/        Transit.tsx (map, route, fork, signs), chips, cards, nav
   src/pages/             Start, Login, Signup, Onboarding, Discover, Results,
                          PlanDetails, Rate, Next, Feed, History, Profile, GroupPage
-  src/components/        chips, cards, nav bar, stars, avatars, bottom sheet
-  src/styles.css         design tokens from the Figma moodboard
+  src/styles.css         the design system
 ```
-
-**Design** follows the Figma file: the moodboard's Boston-sports palette (Red Sox red `#CB2930`, Patriots navy `#002A5C`, Celtics green `#00834A`, silver, purple, orange), Helvetica Neue Bold / Medium (-2%) / Light, pill chips, and the four-tab nav (feed · discover · history · profile). Types are color-coded: **event** purple, **activity** green, **food** orange.
 
 ## API overview
 
 | Method | Path | What |
 | --- | --- | --- |
 | GET | `/api/meta` | neighborhoods, types, price tiers, durations, tags |
+| POST | `/api/auth/guest` | one-tap demo account |
 | POST | `/api/auth/signup`, `/api/auth/login` | returns a bearer token |
-| GET/PUT | `/api/me`, `/api/me/preferences` | profile, stats, Boston Bingo |
-| POST | `/api/recommendations` | `{location,type,price,duration,timeOfDay?,groupMode?,groupId?,excludeIds?,feedback?}` → 2 suggestions |
-| POST | `/api/plans` | choose a suggestion (forms a crew if `groupMode`) |
-| POST | `/api/plans/:id/complete` | rating, private review, optional feed post |
+| GET/PUT | `/api/me`, `/api/me/preferences` | profile, stats, neighborhoods visited |
+| POST | `/api/recommendations` | `{location,type,price,duration,timeOfDay?,groupMode?,groupId?,excludeIds?,feedback?}` → 2 picks |
+| POST | `/api/plans` | take a pick (forms a crew if `groupMode`) |
+| POST | `/api/plans/:id/complete` | rating, private notes, optional feed post |
 | GET | `/api/history`, `/api/feed` | |
 | POST | `/api/feed/:id/react` | `like` / `want` (both shape recommendations) |
-| GET/POST | `/api/groups/:id`, `/keep`, `/messages`, `/join-current`, `/leave` | group profile + chat |
+| GET/POST | `/api/groups/:id`, `/keep`, `/messages`, `/join-current`, `/leave` | crew profile + chat |
 
 ## Notes and honest caveats
 
-- **Places are real; details are approximate.** Prices, hours and seasons are best-effort for a demo. Verify before relying on them. Events are modeled as venues and recurring happenings ("what's on tonight at the Sinclair") so the catalog doesn't go stale.
-- **The crew members you meet in a solo demo are simulated locals** (flagged `isDemo` in the DB), so one person can demo group matching. Two real accounts that pick the same spot with "Form a group" on **will** be matched together.
-- Users must be 18+. Every catalog spot is a public venue. Auth is simple (scrypt-hashed passwords, bearer tokens), fine for a hackathon but not production-hardened.
-- Maps use OpenStreetMap embeds and Google Maps links (no API keys needed).
+- **Places are real; details are approximate.** Prices, hours and seasons are best-effort for a demo. Verify before relying on them. Events are modeled as venues and recurring happenings so the catalog doesn't go stale.
+- **The crew members you meet in a solo demo are simulated locals** (flagged `isDemo`), so one person can demo crews. Two real accounts that take the same spot with "Find me a crew" on **will** be matched together.
+- **Guest mode is for demos:** it skips sign-up (and the 18+ check), and logging out ends the guest account. Real accounts must be 18+. Every catalog spot is a public venue.
+- Auth is simple (scrypt-hashed passwords, bearer tokens): fine for a hackathon, not production-hardened.
+- Maps use OpenStreetMap embeds (grayscale, with our own station pin) and Google Maps links. No API keys needed.
 
 ## Where it could go next
 
-- Live events from Eventbrite / Ticketmaster / venue calendars layered onto the same `Place` shape
-- Skill levels for activities (beginner → expert) to match people learning the same thing (from our moodboard)
+- Live events from Eventbrite / Ticketmaster / venue calendars on the same `Place` shape
+- Real-time T arrivals from the MBTA V3 API on the station sign ("Next Orange Line: 4 min")
+- Skill levels for activities (beginner → expert) to match people learning the same thing
 - Identity verification at onboarding; real-time chat over WebSockets
-- AI-written "why you'll like it" blurbs and smarter learning from feed reactions
 - Native app (the UI is already phone-first)

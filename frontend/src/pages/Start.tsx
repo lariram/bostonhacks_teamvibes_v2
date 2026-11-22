@@ -1,30 +1,48 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { ArrowIcon } from '../components/Icons';
+import { BrandMark } from '../components/Transit';
 import { Wordmark } from '../components/Wordmark';
-import { COLORS, TAGLINE } from '../config';
+import { BRAND_STORY, TAGLINE } from '../config';
+import { api } from '../lib/api';
+import { useAuth } from '../lib/auth';
 
 export default function Start() {
+  const { signIn } = useAuth();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function guest() {
+    setBusy(true);
+    setError(null);
+    try {
+      const { token } = await api<{ token: string }>('/auth/guest', { method: 'POST' });
+      await signIn(token, '/onboarding');
+    } catch (e) {
+      setError((e as Error).message);
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="screen start">
-      <div className="start__swatches" aria-hidden>
-        {[COLORS.red, COLORS.navy, COLORS.green, COLORS.silver, COLORS.purple, COLORS.orange].map((c) => (
-          <span key={c} style={{ background: c }} />
-        ))}
-      </div>
       <div className="start__hero">
-        <Wordmark size={56} />
+        <BrandMark dark width={300} />
+        <Wordmark size={64} light />
         <p className="start__tagline">{TAGLINE}</p>
-        <p className="start__pitch">
-          Tell us where you are, what you're into and what you want to spend. We'll give you two great things to do,
-          and a crew of Bostonians to do them with.
-        </p>
       </div>
       <div className="start__actions">
-        <Link to="/login" className="btn btn--ghost btn--lg">
-          Log In
+        <button type="button" className="btn btn--light btn--lg btn--block" onClick={guest} disabled={busy}>
+          {busy ? 'Boarding…' : 'Try it as a guest'} <ArrowIcon size={20} />
+        </button>
+        <Link to="/signup" className="btn btn--outline-light btn--lg btn--block">
+          Create account
         </Link>
-        <Link to="/signup" className="btn btn--primary btn--lg">
-          Create Account
+        <Link to="/login" className="start__login">
+          Have an account? <strong>Log in</strong>
         </Link>
+        {error && <p className="error">{error}</p>}
+        <p className="start__story">{BRAND_STORY}</p>
       </div>
     </div>
   );

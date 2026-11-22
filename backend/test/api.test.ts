@@ -33,6 +33,17 @@ describe('auth', () => {
     expect(bad.status).toBe(401);
   });
 
+  it('guest mode logs in with one tap', async () => {
+    const res = await request(app).post('/api/auth/guest');
+    expect(res.status).toBe(200);
+    const me = await request(app).get('/api/me').set('Authorization', `Bearer ${res.body.token}`);
+    expect(me.status).toBe(200);
+    expect(me.body.user.isGuest).toBe(true);
+    // a second guest gets a separate account
+    const again = await request(app).post('/api/auth/guest');
+    expect(again.body.user.id).not.toBe(res.body.user.id);
+  });
+
   it('requires 18+', async () => {
     const res = await request(app)
       .post('/api/auth/signup')

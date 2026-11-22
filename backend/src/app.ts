@@ -128,11 +128,35 @@ export function createApp(db: Db, opts: AppOptions = {}) {
     }),
   );
 
+  // One tap, no form: for demos and judges. Guest accounts can't log back in after logging out.
+  app.post(
+    '/api/auth/guest',
+    h(() => {
+      const tag = newId('g').slice(-6);
+      const user: User = {
+        id: newId('usr'),
+        fullName: 'Guest Rider',
+        username: `guest_${tag}`,
+        email: `guest_${tag}@guest.local`,
+        age: 21,
+        passwordHash: '',
+        isGuest: true,
+        preferences: { food: [], event: [], activity: [] },
+        tagWeights: {},
+        wantIds: [],
+        avatarColor: AVATAR_COLORS[Math.floor(random() * AVATAR_COLORS.length)],
+        createdAt: now().toISOString(),
+      };
+      db.data.users.push(user);
+      return { token: createSession(db, user.id), user: selfUser(user) };
+    }),
+  );
+
   app.post(
     '/api/auth/login',
     h((req) => {
       const email = String(req.body?.email ?? '').trim().toLowerCase();
-      const user = db.data.users.find((u) => u.email === email && !u.isDemo);
+      const user = db.data.users.find((u) => u.email === email && !u.isDemo && !u.isGuest);
       if (!user || !verifyPassword(String(req.body?.password ?? ''), user.passwordHash))
         fail(401, 'Email or password is incorrect');
       return { token: createSession(db, user!.id), user: selfUser(user!) };
@@ -248,6 +272,7 @@ export function createApp(db: Db, opts: AppOptions = {}) {
         now: now(),
         lastShown,
         random,
+        selfId: req.user.id,
       });
       return result;
     }),
