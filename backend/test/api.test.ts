@@ -57,7 +57,7 @@ describe('auth', () => {
 });
 
 describe('full day flow', () => {
-  it('onboard → recommend → crew → rate → post → keep group → group recs', async () => {
+  it('onboard → recommend → group → rate → post → keep group → group recs', async () => {
     const token = await signup();
     const authed = (r: request.Test) => r.set('Authorization', `Bearer ${token}`);
 
@@ -133,7 +133,7 @@ describe('full day flow', () => {
     expect(me.body.user.passwordHash).toBeUndefined();
   });
 
-  it('two real people picking the same spot land in the same crew', async () => {
+  it('two real people picking the same spot land in the same group', async () => {
     const a = await signup('Ana A', 'ana_a', 'a@test.dev');
     const b = await signup('Ben B', 'ben_b', 'b@test.dev');
     const req1 = { location: 'cambridge', type: 'activity', price: 'free', duration: 'short', groupMode: true };

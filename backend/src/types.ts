@@ -213,7 +213,7 @@ export interface Group {
   name: string;
   memberIds: string[];
   status: GroupStatus;
-  /** Where the crew first met */
+  /** Where the group first met */
   originPlaceId: string;
   activities: GroupActivity[];
   createdAt: string;

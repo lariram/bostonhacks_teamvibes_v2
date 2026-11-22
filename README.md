@@ -1,6 +1,6 @@
 # OutBound
 
-**Two picks. One crew. Your next stop.**
+**Two picks. One group. Your next stop.**
 
 BostonHacks 2026 · Team Vibes · Track: **Boundless Boston**
 
@@ -9,8 +9,8 @@ Boston is America's college city: 35+ campuses, a quarter-million students, and 
 **OutBound** kills the decision paralysis and the bubble at the same time:
 
 1. **Tell it who you are** (student, local, visiting, new in town), then **four quick stops:** where, what (event / activity / food), budget, and when (today or any day in the next two weeks, a start time in 30-minute steps, and how long you have). You get **two** options, A or B. That's the whole decision. Not feeling either? Tell it one thing ("Japanese", "cheaper") and get two more. Picks include **real events happening today**, pulled live from public Boston calendars (universities, Downtown Boston, Massachusetts 250, SoWa), plus Ticketmaster and Google's event listings if you add keys.
-2. **"Find me a crew."** When you take a pick, you're matched with other Bostonians headed to the same spot.
-3. **Stay on with the crew.** Clicked with them? Keep the group for the rest of the day. The crew gets its own **group profile**, and picks only include things that work for *every* rider's tastes and budget.
+2. **"Find me a group."** When you take a pick, you're matched with other Bostonians headed to the same spot.
+3. **Stay on with the group.** Clicked with them? Keep the group for the rest of the day. The group gets its own **group profile**, and picks only include things that work for *every* rider's tastes and budget.
 
 Rate each stop (5 stars + private notes), post it to the feed, and watch **Your Boston**, a T-style map of all 12 neighborhoods, light up as you explore.
 
@@ -54,12 +54,12 @@ npm start           # one server on :3001 serving the API + built web app
 ## 2-minute demo script
 
 1. **Try it as a guest** → **Student** → pick a few interests (Chinese, Dessert, Live music…) → Continue.
-2. **Where to?** Chinatown · Food · $10–$20 · a start time · 1.5 hrs · **Find me a crew**. Watch the route line fill in with the Orange Line color as you answer. → *Show me two*
+2. **Where to?** Chinatown · Food · $10–$20 · a start time · 1.5 hrs · **Find me a group**. Watch the route line fill in with the Orange Line color as you answer. → *Show me two*
 3. **A or B.** Point out the "why" line ("You're into Chinese · Right in Chinatown"): the algorithm explains itself.
 4. **Neither. Show me two more** → tap "Japanese" → it finds hot pot and flags it as *a little over budget* instead of ignoring you.
-5. **Take A** → station sign, map, address, nearest T, local tip, and **your crew** (3 Bostonians from different schools) → **Crew chat**.
+5. **Take A** → station sign, map, address, nearest T, local tip, and **your group** (3 Bostonians from different schools) → **Group chat**.
 6. **I'm done, rate it** → stars, private notes, post to feed.
-7. **Next stop?** → **Stay with the crew** → the budget is now *"Crew max $10–$20"*, and picks say things like *"You, Maya & Hana love live music"*.
+7. **Next stop?** → **Stay with the group** → the budget is now *"Group max $10–$20"*, and picks say things like *"You, Maya & Hana love live music"*.
 8. **Feed** (save a spot → it boosts your picks) → **My line** (your history as a transit line) → **Profile** (the *Your Boston* map lights up).
 
 ## Design
@@ -72,15 +72,15 @@ The whole visual system is borrowed from the T: black-and-white Helvetica signag
 | Green Line `#00843D` | Activities |
 | Orange Line `#ED8B00` | Food |
 | Bus yellow `#FFC72C` | Local tips, heads-ups, star ratings |
-| Each crew | Gets its own line color (stable per crew) |
+| Each group | Gets its own line color (stable per group) |
 | You | Your history is your own line, in your color |
 
 Signature pieces (all in `frontend/src/components/Transit.tsx`):
-- **Brand mark:** four T lines converging on one station. *OutBound*: every T line heads out from downtown toward somewhere new.
+- **Brand mark:** one station with four T lines branching out from it to the right. *OutBound*: every T line heads out from downtown toward somewhere new.
 - **The route:** the planner is a line diagram. Each question is a stop, and the line fills in as you answer.
 - **The fork:** results open with one track splitting into branches **A** and **B**, like the Green Line branches.
 - **Station sign:** every place gets a black platform-style sign with its nearest T line bullets.
-- **My line / Your day together:** history and a crew's day are drawn as stations on a line, with the current stop pulsing.
+- **My line / Your day together:** history and a group's day are drawn as stations on a line, with the current stop pulsing.
 - **Your Boston:** "Boston bingo" (the mentor's idea), with two maps to switch between:
   - **Neighborhoods:** a schematic T-style map of the 12 neighborhoods that fills in as you explore.
   - **T stops:** all 141 subway, trolley, Mattapan and Silver Line stops on a schematic map styled like the platform diagram (straight lines at 45°, not to scale). Drag to move; pinch, scroll, double-tap or use the +/− buttons to zoom. Names appear as you zoom in, and labels that would overlap are skipped. Every place you complete checks off its nearest stop (within about 1 km). Per-line progress is shown below the map (e.g. Green 4/69); tap a line to zoom to it, or tap a stop for its name. The layout lives in `frontend/src/components/tmapLayout.ts`.
@@ -92,7 +92,7 @@ The minimalism is on purpose: the app exists to remove decisions, so every scree
 
 ## Following
 
-Follow people from your crews, from the feed, or from their profile. The feed opens on **Following** (them plus you); **Everyone** is one tap away. If you don't follow anyone yet, it suggests people, crewmates first.
+Follow people from your groups, from the feed, or from their profile. The feed opens on **Following** (them plus you); **Everyone** is one tap away. If you don't follow anyone yet, it suggests people, groupmates first.
 
 ## Photos
 
@@ -128,7 +128,7 @@ Google has no official events API, so Google's listings come through SerpApi. Pu
 - **Real details:** time range, cost, the nearest T stop computed from the venue (*"Kendall/MIT · 1 min walk"*), and links to the event page and tickets/registration. Campus events carry a note to check they're open to the public.
 - **De-duplicated:** the same show listed by two sources appears once (Ticketmaster wins), and a curated entry is hidden when the real listing is on today (by venue or by name, so the live Nutcracker replaces our generic one). Listings without coordinates borrow the exact location, T stop and price of a venue or show we already know.
 - **Resilient:** each source is cached and refreshed on its own schedule in the background. A request never waits on the network, and one source failing never affects the others. `GET /api/live` shows each source's status.
-- **Picked events are saved,** so your history, the feed and crews keep working after an event leaves the live cache.
+- **Picked events are saved,** so your history, the feed and groups keep working after an event leaves the live cache.
 
 **What was verified:** all seven keyless calendars were tested against their real APIs (28 upcoming events on a sample weekday). The Ticketmaster and SerpApi adapters follow their documented response formats and are covered by fixture tests, but weren't run against the live services (no keys during development). Try them with your own keys and check `GET /api/live`.
 
@@ -164,9 +164,9 @@ If your network uses an HTTPS proxy, start the server with `NODE_USE_ENV_PROXY=1
 
 **Diversity:** B is the best option that *differs* from A (neighborhood or vibe) when it's close in score, so it's a real choice.
 
-**Crews:** every rider's interest is scored separately and combined as `0.6·(least-happy rider) + 0.4·(average)`, so nobody gets dragged somewhere they'd hate. The budget is capped at the lowest rider's comfort level, and anywhere the crew has already been is skipped.
+**Groups:** every rider's interest is scored separately and combined as `0.6·(least-happy rider) + 0.4·(average)`, so nobody gets dragged somewhere they'd hate. The budget is capped at the lowest rider's comfort level, and anywhere the group has already been is skipped.
 
-**Crew matching** (`services.ts → matchCrew`): if someone else is forming a crew at the same spot (within 6 hours), you join theirs. That's how two real users get matched. Otherwise a new crew starts and invites the most compatible locals (shared interests, similar age, would like this place). New groups are named after where they met (e.g. "Regina Pizzeria group"), and any member can rename one with the pencil next to its name; the chat notes who renamed it. Groups that still have an old auto-generated name are renamed this way on startup.
+**Group matching** (`services.ts → matchCrew`): if someone else is forming a group at the same spot (within 6 hours), you join theirs. That's how two real users get matched. Otherwise a new group starts and invites the most compatible locals (shared interests, similar age, would like this place). New groups are named after where they met (e.g. "Regina Pizzeria group"), and any member can rename one with the pencil next to its name; the chat notes who renamed it. Groups that still have an old auto-generated name are renamed this way on startup.
 
 ## Project structure
 
@@ -178,7 +178,7 @@ backend/                 Node + Express + TypeScript
   src/live/              today's real events: sources, Boston time, location + T stop inference
   src/catalog.ts         curated places + live events + saved picks, in one lookup
   src/recommender.ts     the algorithm
-  src/services.ts        auth, taste profiles, crew matching, group profiles
+  src/services.ts        auth, taste profiles, group matching, group profiles
   src/app.ts             REST API
   test/                  vitest: algorithm + full end-to-end API flow
 frontend/                React + Vite + TypeScript (mobile-first)
@@ -198,7 +198,7 @@ frontend/                React + Vite + TypeScript (mobile-first)
 | POST | `/api/auth/signup`, `/api/auth/login` | returns a bearer token |
 | GET/PUT | `/api/me`, `/api/me/preferences` | profile, stats, neighborhoods visited |
 | POST | `/api/recommendations` | `{location,type,price,duration,timeOfDay?,groupMode?,groupId?,excludeIds?,feedback?}` → 2 picks |
-| POST | `/api/plans` | take a pick (forms a crew if `groupMode`) |
+| POST | `/api/plans` | take a pick (forms a group if `groupMode`) |
 | POST | `/api/plans/:id/complete` | rating, private notes, optional feed post |
 | GET | `/api/live` | live-event counts (today + next two weeks) and each source's status |
 | GET | `/api/plans/:id/calendar.ics` | one plan as a calendar file (Apple Calendar, Outlook) |
@@ -207,12 +207,12 @@ frontend/                React + Vite + TypeScript (mobile-first)
 | GET/POST | `/api/users/:id`, `/api/users/:id/follow`, `/api/people/suggested` | profiles and following |
 | GET/POST | `/api/saved`, `/api/saved/:placeId` | spots saved from the feed |
 | POST | `/api/feed/:id/react` | `like` / `want` (both shape recommendations) |
-| GET/POST | `/api/groups/:id`, `/keep`, `/messages`, `/join-current`, `/leave` | crew profile + chat |
+| GET/POST | `/api/groups/:id`, `/keep`, `/messages`, `/join-current`, `/leave` | group profile + chat |
 
 ## Notes and honest caveats
 
 - **Curated places are real; details are approximate.** Prices, hours and seasons in the catalog are best-effort for a demo. Live events come straight from their sources, but listings change, so check the event page before you go.
-- **The crew members you meet in a solo demo are simulated locals** (flagged `isDemo`), so one person can demo crews. Two real accounts that take the same spot with "Find me a crew" on **will** be matched together.
+- **The group members you meet in a solo demo are simulated locals** (flagged `isDemo`), so one person can demo groups. Two real accounts that take the same spot with "Find me a group" on **will** be matched together.
 - **Guest mode is for demos:** it skips sign-up (and the 18+ check), and logging out ends the guest account. Real accounts must be 18+. Every catalog spot is a public venue.
 - Auth is simple (scrypt-hashed passwords, bearer tokens): fine for a hackathon, not production-hardened.
 - Maps use OpenStreetMap embeds (grayscale, with our own station pin) and Google Maps links. No API keys needed.

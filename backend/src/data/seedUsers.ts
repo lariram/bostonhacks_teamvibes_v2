@@ -14,7 +14,7 @@ export interface DemoLocal {
   preferences: Preferences;
   /** Most they're comfortable spending on one outing */
   budget: PriceTier;
-  /** What they say when a crew forms */
+  /** What they say when a group forms */
   hello: string;
 }
 

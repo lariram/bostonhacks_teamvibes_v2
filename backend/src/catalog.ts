@@ -10,7 +10,7 @@ const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
 /**
  * Every place the app knows about: the curated catalog, today's live events,
  * and snapshots of live events people have picked before (so history, the feed
- * and crews keep working after an event drops out of the live cache).
+ * and groups keep working after an event drops out of the live cache).
  */
 export class Catalog {
   constructor(

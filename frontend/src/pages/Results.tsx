@@ -58,7 +58,7 @@ export default function Results() {
     <div className="screen">
       <TopBar back="/discover" title={<span className="label label--muted">Round {session.round}</span>} />
       <p className="label">
-        {req.groupId ? 'For your crew' : 'For you'} · {typeLabel} · {hood} · {span}
+        {req.groupId ? 'For your group' : 'For you'} · {typeLabel} · {hood} · {span}
         {session.budget && session.budget !== req.price && <> · max {meta?.priceTiers.find((t) => t.id === session.budget)?.label}</>}
       </p>
       <h1 className="title">{none ? 'Nothing fits. Yet.' : b ? 'Your next stop.' : 'One good option.'}</h1>

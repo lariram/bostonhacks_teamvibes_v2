@@ -56,7 +56,7 @@ export default function Person() {
       </div>
       {p.sharedCrews.length > 0 && (
         <p className="small">
-          <span className="muted">Crews together:</span>{' '}
+          <span className="muted">Groups together:</span>{' '}
           {p.sharedCrews.map((c, i) => (
             <span key={c.id}>
               {i > 0 && ', '}

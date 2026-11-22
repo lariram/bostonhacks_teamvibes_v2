@@ -180,9 +180,9 @@ export default function PlanDetails() {
       )}
 
       {group && (
-        <section className="crew" style={{ '--crew': crewColor } as CSSProperties}>
+        <section className="group" style={{ '--crew': crewColor } as CSSProperties}>
           <div className="crew__head">
-            <span className="label">{group.status === 'forming' ? 'Your crew for this stop' : group.name}</span>
+            <span className="label">{group.status === 'forming' ? 'Your group for this stop' : group.name}</span>
             <span className="label label--muted">{group.members.length} riders</span>
           </div>
           <ul className="people">
@@ -205,7 +205,7 @@ export default function PlanDetails() {
             </p>
           )}
           <Link to={`/groups/${group.id}`} className="btn btn--ghost btn--block">
-            <ChatIcon size={18} /> Crew chat
+            <ChatIcon size={18} /> Group chat
           </Link>
           <p className="tiny muted center">Meet in public, and let a friend know where you're headed.</p>
         </section>

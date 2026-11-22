@@ -3,7 +3,7 @@
  * Minimal black-and-white signage (Helvetica, like the T) with MBTA line colors
  * as the only accents, and every color means something:
  *   events = Red Line · activities = Green Line · food = Orange Line
- *   crews each ride their own line · your history is your own line
+ *   groups each ride their own line · your history is your own line
  */
 :root {
   --red: #da291c;
@@ -1904,7 +1904,7 @@ ol {
   margin-top: 12px;
 }
 
-/* ───────── crew page ───────── */
+/* ───────── group page ───────── */
 .crew-title {
   display: flex;
   gap: 14px;
@@ -2415,4 +2415,8 @@ ol {
   flex: 1;
   min-width: 0;
   border-bottom-color: var(--crew);
+}
+
+.discover__title {
+  margin-bottom: 22px;
 }

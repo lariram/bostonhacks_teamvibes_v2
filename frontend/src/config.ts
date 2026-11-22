@@ -1,6 +1,6 @@
 /** Working name. Change it here and it updates across the app. */
 export const APP_NAME = 'OutBound';
-export const TAGLINE = 'Two picks. One crew. Your next stop.';
+export const TAGLINE = 'Two picks. One group. Your next stop.';
 export const BRAND_STORY = 'On the T, outbound means leaving downtown for somewhere new.';
 
 /** MBTA line colors: the whole visual system is built on these. */
@@ -44,7 +44,7 @@ export const NEIGHBORHOOD_LINES: Record<string, LineName[]> = {
   brighton: ['green'],
 };
 
-/** Crews get a line of their own, picked from the group id */
+/** Groups get a line of their own, picked from the group id */
 const CREW_LINES: LineName[] = ['blue', 'purple', 'teal', 'red', 'green', 'orange'];
 export function crewLine(groupId: string): LineName {
   let h = 0;

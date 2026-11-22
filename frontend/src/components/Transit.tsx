@@ -24,14 +24,16 @@ export function LineDots({ lines, size = 10 }: { lines: LineName[]; size?: numbe
 }
 
 /**
- * The brand mark: four T lines converging on one station.
+ * The brand mark: one station, with four T lines branching out from it.
  * OutBound: every line heads out from downtown toward somewhere new.
  */
 export function BrandMark({ width = 280, dark = false }: { width?: number; dark?: boolean }) {
   const node = dark ? '#0b0b0c' : '#fff';
   const ring = dark ? '#fff' : '#0b0b0c';
   return (
-    <svg className="brand-mark" width={width} viewBox="0 0 280 120" aria-hidden>
+    <svg className="brand-mark" width={(width * 194) / 280} viewBox="86 0 194 120" aria-hidden>
+      {/* drawn converging, then mirrored: the station sits on the left and the lines head out to the right */}
+      <g transform="translate(280 0) scale(-1 1)">
       <g fill="none" strokeWidth="9" strokeLinecap="round" strokeLinejoin="round">
         <path d="M6 18 H96 L176 60" stroke={LINES.red} />
         <path d="M6 46 H120 L148 60 H176" stroke={LINES.orange} />
@@ -40,6 +42,7 @@ export function BrandMark({ width = 280, dark = false }: { width?: number; dark?
         <path d="M176 60 H270" stroke={ring} />
       </g>
       <circle cx="176" cy="60" r="15" fill={node} stroke={ring} strokeWidth="7" />
+      </g>
     </svg>
   );
 }
@@ -55,7 +58,7 @@ export function StationSign({ kicker, title, children, color }: { kicker?: React
   );
 }
 
-/** A vertical line with stations, used for history, a crew's day, and the generator */
+/** A vertical line with stations, used for history, a group's day, and the generator */
 export function LineTimeline<T>({
   items,
   color,

@@ -57,7 +57,7 @@ export default function Profile() {
         </div>
         <div>
           <strong>{stats.groups}</strong>
-          <span className="label label--muted">crews</span>
+          <span className="label label--muted">groups</span>
         </div>
       </div>
 
@@ -95,10 +95,10 @@ export default function Profile() {
 
       <section className="panel">
         <div className="panel__head">
-          <h2 className="label">Crews</h2>
+          <h2 className="label">Groups</h2>
         </div>
         {groups.length === 0 ? (
-          <p className="small muted">No crews yet. Choose "Find me a crew" when you plan, and keep the people you click with.</p>
+          <p className="small muted">No groups yet. Choose "Find me a group" when you plan, and keep the people you click with.</p>
         ) : (
           <ul className="crew-list">
             {groups.map((g) => (

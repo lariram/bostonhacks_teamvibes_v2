@@ -548,7 +548,7 @@ export function createApp(db: Db, opts: AppOptions = {}) {
     }),
   );
 
-  // Who to follow: people from your crews first, then people posting lately
+  // Who to follow: people from your groups first, then people posting lately
   app.get(
     '/api/people/suggested',
     auth,

@@ -63,7 +63,7 @@ export function allPrefs(u: User): Set<string> {
 
 export function profileFor(db: Db, u: User): TasteProfile {
   const done = new Set(db.data.plans.filter((p) => p.userId === u.id && p.status === 'completed').map((p) => p.placeId));
-  // Demo locals have "done" whatever their crews have done
+  // Demo locals have "done" whatever their groups have done
   for (const g of db.data.groups) {
     if (g.memberIds.includes(u.id)) for (const a of g.activities) if (u.isDemo) done.add(a.placeId);
   }
@@ -106,16 +106,16 @@ export function learnFromRating(u: User, place: Place, rating: number) {
   learn(u, place.tags, (rating - 3) * 0.15);
 }
 
-// ───────────── crews & groups ─────────────
+// ───────────── groups & groups ─────────────
 
 const CREW_WINDOW_MS = 6 * 60 * 60 * 1000;
 const MAX_CREW = 6;
 
 /**
  * Called when someone opts into "form a group" and picks a place.
- * 1. If a crew is already forming for the same place recently, join it
+ * 1. If a group is already forming for the same place recently, join it
  *    (this is how two real users get matched).
- * 2. Otherwise start a new crew and invite 2–3 compatible locals.
+ * 2. Otherwise start a new group and invite 2–3 compatible locals.
  */
 export function matchCrew(db: Db, user: User, place: Place, random: () => number = Math.random): Group {
   const now = Date.now();
@@ -129,7 +129,7 @@ export function matchCrew(db: Db, user: User, place: Place, random: () => number
   );
   if (existing) {
     existing.memberIds.push(user.id);
-    systemMessage(db, existing.id, `${firstName(user)} joined the crew 👋`);
+    systemMessage(db, existing.id, `${firstName(user)} joined the group 👋`);
     db.save();
     return existing;
   }
@@ -153,7 +153,7 @@ export function matchCrew(db: Db, user: User, place: Place, random: () => number
   };
   db.data.groups.push(group);
 
-  systemMessage(db, group.id, `Crew formed for ${place.name} ${place.emoji}. Meet up and say hi!`);
+  systemMessage(db, group.id, `Group formed for ${place.name} ${place.emoji}. Meet up and say hi!`);
   companions.forEach((c, i) => {
     const hello = DEMO_LOCALS.find((d) => d.id === c.id)?.hello ?? 'hey everyone!';
     db.data.messages.push({

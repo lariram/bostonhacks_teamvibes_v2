@@ -59,7 +59,7 @@ export default function Feed() {
       {followingNoOne && (
         <section className="who-to-follow">
           <h2 className="label">Follow people to fill your feed</h2>
-          <p className="small muted">People from your crews, and people whose outings look like yours.</p>
+          <p className="small muted">People from your groups, and people whose outings look like yours.</p>
           <ul>
             {suggested.map(({ user, why }) => (
               <li key={user.id}>

@@ -59,7 +59,7 @@ export default function Signup() {
           {busy ? 'Creating…' : 'Create account'}
         </button>
         <p className="muted small center">
-          18+ to join crews. Have an account? <Link to="/login">Log in</Link>
+          18+ to join groups. Have an account? <Link to="/login">Log in</Link>
         </p>
       </form>
     </div>

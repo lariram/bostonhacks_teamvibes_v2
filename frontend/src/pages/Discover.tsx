@@ -84,7 +84,7 @@ export default function Discover() {
   const tierRank = (t: PriceTier) => meta?.priceTiers.findIndex((p) => p.id === t) ?? 0;
   const groupBudgetRank = group ? tierRank(group.budget) : Infinity;
 
-  // Default to the crew's budget, and never sit above it
+  // Default to the group's budget, and never sit above it
   useEffect(() => {
     if (group && (!price || tierRank(price) > groupBudgetRank)) setPrice(group.budget);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -134,8 +134,7 @@ export default function Discover() {
       ) : (
         <p className="label">{me?.user.persona === 'visitor' ? 'Welcome to Boston' : `Hi, ${me?.user.firstName}`}</p>
       )}
-      <h1 className="title">{group ? 'Where to next?' : 'Where to?'}</h1>
-      <p className="lede">Four quick stops. We'll do the deciding.</p>
+      <h1 className="title discover__title">{group ? 'Where to next?' : 'Where to?'}</h1>
       {live?.enabled && live.total > 0 && (
         <p className="live-banner">
           <span className="live-dot" aria-hidden />
@@ -186,7 +185,7 @@ export default function Discover() {
 
         <Stop
           label="Budget"
-          value={group ? `Crew max ${meta.priceTiers[groupBudgetRank]?.label}` : label(meta.priceTiers, price)}
+          value={group ? `Group max ${meta.priceTiers[groupBudgetRank]?.label}` : label(meta.priceTiers, price)}
           done={!!price}
         >
           {meta.priceTiers.map((t, i) => (
@@ -195,7 +194,7 @@ export default function Discover() {
               selected={price === t.id}
               disabled={i > groupBudgetRank}
               onClick={() => setPrice(t.id)}
-              title={i > groupBudgetRank ? "Over someone in the crew's budget" : undefined}
+              title={i > groupBudgetRank ? "Over someone in the group's budget" : undefined}
             >
               {t.label}
             </Chip>
@@ -251,13 +250,13 @@ export default function Discover() {
                 Just me
               </button>
               <button type="button" role="radio" aria-checked={groupMode} className={groupMode ? 'on' : ''} onClick={() => setGroupMode(true)}>
-                Find me a crew
+                Find me a group
               </button>
             </div>
             <p className="small muted route__hint">
               {groupMode
-                ? "We'll match you with Bostonians headed to the same spot. Click with them? Keep the crew for the rest of the day."
-                : 'Want company? Find a crew and meet people who are into the same things.'}
+                ? "We'll match you with Bostonians headed to the same spot. Click with them? Keep the group for the rest of the day."
+                : 'Want company? Find a group and meet people who are into the same things.'}
             </p>
           </li>
         )}

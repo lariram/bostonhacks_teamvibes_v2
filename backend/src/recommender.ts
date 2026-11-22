@@ -449,7 +449,7 @@ export function formatMinutes(min: number): string {
 }
 
 /**
- * Score how well a (simulated or real) local fits a crew heading to `place`
+ * Score how well a (simulated or real) local fits a group heading to `place`
  * alongside `user`. Used to fill a group when someone opts in.
  */
 export function companionScore(place: Place, local: TasteProfile & { age?: number }, user: TasteProfile & { age?: number }): number {

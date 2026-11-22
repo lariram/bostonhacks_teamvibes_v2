@@ -27,7 +27,7 @@ export default function Next() {
     if (!plan?.group) return;
     setBusy(true);
     const g = await api<Group>(`/groups/${plan.group.id}/keep`, { body: { name } });
-    // keep the last request so location/time carry over to the crew's next pick
+    // keep the last request so location/time carry over to the group's next pick
     navigate(`/discover?group=${g.id}`);
   }
 
@@ -55,16 +55,16 @@ export default function Next() {
         <section className="next__crew">
           <AvatarStack users={group.members} size={44} />
           <p className="center">
-            Stay on with this crew? We'll save a group profile and only suggest things that work for all {group.members.length} of you.
+            Stay on with this group? We'll save a group profile and only suggest things that work for all {group.members.length} of you.
           </p>
           {group.status === 'forming' && (
             <label className="field">
-              <span className="label">Name the crew</span>
+              <span className="label">Name the group</span>
               <input className="input" value={name} maxLength={40} onChange={(e) => setName(e.target.value)} />
             </label>
           )}
           <button type="button" className="btn btn--primary btn--block btn--lg" disabled={busy} onClick={keepCrew}>
-            Stay with the crew <ArrowIcon size={20} />
+            Stay with the group <ArrowIcon size={20} />
           </button>
           <button type="button" className="btn btn--ghost btn--block" onClick={solo}>
             Ride solo
@@ -75,7 +75,7 @@ export default function Next() {
           <button type="button" className="btn btn--primary btn--block btn--lg" onClick={solo}>
             Find another <ArrowIcon size={20} />
           </button>
-          <p className="small center muted">Tip: pick "Find me a crew" next time to meet people along the way.</p>
+          <p className="small center muted">Tip: pick "Find me a group" next time to meet people along the way.</p>
         </section>
       )}
 

@@ -13,7 +13,7 @@ import { useRecSession } from '../lib/session';
 import type { ChatMessage, Group, Plan } from '../lib/types';
 import { timeAgo } from '../lib/util';
 
-/** Group profile + chat. Every crew rides its own line color. */
+/** Group profile + chat. Every group rides its own line color. */
 export default function GroupPage() {
   const { id } = useParams();
   const { me, meta } = useAuth();
@@ -143,7 +143,7 @@ export default function GroupPage() {
           Chat
         </button>
         <button role="tab" aria-selected={tab === 'profile'} className={tab === 'profile' ? 'on' : ''} onClick={() => setTab('profile')}>
-          Crew profile
+          Group profile
         </button>
       </div>
 
@@ -180,7 +180,7 @@ export default function GroupPage() {
             <div ref={endRef} />
           </ul>
           <form className="composer" onSubmit={send}>
-            <input className="input" placeholder="Message the crew" value={text} onChange={(e) => setText(e.target.value)} maxLength={500} />
+            <input className="input" placeholder="Message the group" value={text} onChange={(e) => setText(e.target.value)} maxLength={500} />
             <button className="icon-btn icon-btn--filled" aria-label="Send" disabled={!text.trim()}>
               <SendIcon size={18} />
             </button>
@@ -190,7 +190,7 @@ export default function GroupPage() {
         <div className="group-profile">
           {group.status === 'forming' ? (
             <button type="button" className="btn btn--primary btn--block btn--lg" onClick={keep}>
-              Make this crew official
+              Make this group official
             </button>
           ) : (
             <button type="button" className="btn btn--primary btn--block btn--lg" onClick={planNext}>
@@ -234,7 +234,7 @@ export default function GroupPage() {
               <p className="small muted">Still getting to know each other. Picks will balance everyone's tastes.</p>
             )}
             <p className="small">
-              <span className="muted">Crew budget</span> up to {budget}, so it works for everyone.
+              <span className="muted">Group budget</span> up to {budget}, so it works for everyone.
             </p>
           </section>
 
@@ -256,7 +256,7 @@ export default function GroupPage() {
 
           <p className="center">
             <button type="button" className="link danger small" onClick={leave}>
-              Leave crew
+              Leave group
             </button>
           </p>
         </div>
