@@ -496,21 +496,24 @@ ol {
   height: auto;
 }
 .brand-mark path {
-  stroke-dasharray: 400;
-  stroke-dashoffset: 400;
-  animation: draw 1.1s var(--ease) forwards;
+  stroke-dasharray: 260;
+  stroke-dashoffset: 260;
+  animation: draw 0.7s var(--ease) forwards;
 }
-.brand-mark path:nth-child(2) {
-  animation-delay: 0.08s;
+.brand-mark .bm-2 {
+  animation-delay: 0.35s;
 }
-.brand-mark path:nth-child(3) {
-  animation-delay: 0.16s;
+.brand-mark .bm-3 {
+  animation-delay: 0.7s;
 }
-.brand-mark path:nth-child(4) {
-  animation-delay: 0.24s;
+.brand-mark .bm-node {
+  opacity: 0;
+  animation: fade-in 0.25s ease 0.7s forwards;
 }
-.brand-mark path:nth-child(5) {
-  animation-delay: 0.6s;
+@keyframes fade-in {
+  to {
+    opacity: 1;
+  }
 }
 
 /* ───────── start (black, like a platform sign) ───────── */
@@ -522,6 +525,12 @@ ol {
   justify-content: space-between;
   min-height: 100dvh;
   padding: 28px 24px 26px;
+}
+.start__hero .brand-mark {
+  width: 100%;
+  max-width: 340px;
+  align-self: center;
+  margin-bottom: 8px;
 }
 .start__hero {
   display: flex;
@@ -2080,17 +2089,18 @@ ol {
   letter-spacing: 0.04em;
   padding: 6px 12px 10px;
 }
-.navbar__item.active {
-  color: var(--ink);
+.navbar__item svg {
+  box-sizing: content-box;
+  padding: 4px 14px;
+  border-radius: 999px;
+  transition: background 0.2s, color 0.2s;
 }
-.navbar__item.active::after {
-  content: '';
-  position: absolute;
-  bottom: 1px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--red);
+.navbar__item.active {
+  color: var(--nav-color);
+  font-weight: 600;
+}
+.navbar__item.active svg {
+  background: color-mix(in srgb, var(--nav-color) 16%, transparent);
 }
 .footer-bar {
   position: fixed;

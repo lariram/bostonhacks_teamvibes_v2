@@ -76,7 +76,7 @@ The whole visual system is borrowed from the T: black-and-white Helvetica signag
 | You | Your history is your own line, in your color |
 
 Signature pieces (all in `frontend/src/components/Transit.tsx`):
-- **Brand mark:** one station with four T lines branching out from it to the right. *OutBound*: every T line heads out from downtown toward somewhere new.
+- **Brand mark:** one line comes in from the left to a station, splits in two, and each branch splits again into the four T colors (choose your own adventure). *OutBound*: every T line heads out from downtown toward somewhere new.
 - **The route:** the planner is a line diagram. Each question is a stop, and the line fills in as you answer.
 - **The fork:** results open with one track splitting into branches **A** and **B**, like the Green Line branches.
 - **Station sign:** every place gets a black platform-style sign with its nearest T line bullets.

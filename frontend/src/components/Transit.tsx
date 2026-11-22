@@ -24,25 +24,29 @@ export function LineDots({ lines, size = 10 }: { lines: LineName[]; size?: numbe
 }
 
 /**
- * The brand mark: one station, with four T lines branching out from it.
- * OutBound: every line heads out from downtown toward somewhere new.
+ * The brand mark: one line comes in from the left to a station, splits in two,
+ * and each branch splits again. Choose your own adventure, heading outbound.
  */
-export function BrandMark({ width = 280, dark = false }: { width?: number; dark?: boolean }) {
+export function BrandMark({ width = 280, dark = false }: { width?: number | string; dark?: boolean }) {
   const node = dark ? '#0b0b0c' : '#fff';
   const ring = dark ? '#fff' : '#0b0b0c';
   return (
-    <svg className="brand-mark" width={(width * 194) / 280} viewBox="86 0 194 120" aria-hidden>
-      {/* drawn converging, then mirrored: the station sits on the left and the lines head out to the right */}
-      <g transform="translate(280 0) scale(-1 1)">
+    <svg className="brand-mark" width={width} viewBox="0 0 320 140" aria-hidden>
       <g fill="none" strokeWidth="9" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M6 18 H96 L176 60" stroke={LINES.red} />
-        <path d="M6 46 H120 L148 60 H176" stroke={LINES.orange} />
-        <path d="M6 74 H120 L148 60 H176" stroke={LINES.green} />
-        <path d="M6 102 H96 L176 60" stroke={LINES.blue} />
-        <path d="M176 60 H270" stroke={ring} />
+        {/* the line in */}
+        <path className="bm-1" d="M8 70 H84" stroke={ring} />
+        {/* first choice */}
+        <path className="bm-2" d="M84 70 L120 34 H170" stroke={LINES.red} />
+        <path className="bm-2" d="M84 70 L120 106 H170" stroke={LINES.green} />
+        {/* second choices */}
+        <path className="bm-3" d="M170 34 L190 14 H312" stroke={LINES.red} />
+        <path className="bm-3" d="M170 34 L190 54 H312" stroke={LINES.orange} />
+        <path className="bm-3" d="M170 106 L190 86 H312" stroke={LINES.green} />
+        <path className="bm-3" d="M170 106 L190 126 H312" stroke={LINES.blue} />
       </g>
-      <circle cx="176" cy="60" r="15" fill={node} stroke={ring} strokeWidth="7" />
-      </g>
+      <circle className="bm-node" cx="170" cy="34" r="8" fill={node} stroke={ring} strokeWidth="5" />
+      <circle className="bm-node" cx="170" cy="106" r="8" fill={node} stroke={ring} strokeWidth="5" />
+      <circle cx="84" cy="70" r="15" fill={node} stroke={ring} strokeWidth="7" />
     </svg>
   );
 }

@@ -27,7 +27,7 @@ export default function Start() {
   return (
     <div className="screen start">
       <div className="start__hero">
-        <BrandMark dark width={300} />
+        <BrandMark dark width="100%" />
         <Wordmark size={64} light />
         <p className="start__tagline">{TAGLINE}</p>
       </div>
