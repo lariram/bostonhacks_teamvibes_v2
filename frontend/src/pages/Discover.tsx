@@ -135,6 +135,15 @@ export default function Discover() {
         <p className="label">{me?.user.persona === 'visitor' ? 'Welcome to Boston' : `Hi, ${me?.user.firstName}`}</p>
       )}
       <h1 className="title discover__title">{group ? 'Where to next?' : 'Where to?'}</h1>
+      {!group && (
+        <Link to="/agenda" className="agenda-cta">
+          <span>
+            <strong>Can't decide at all?</strong>
+            <span className="small muted">Get a random day or week of stops close together</span>
+          </span>
+          <ArrowIcon size={18} />
+        </Link>
+      )}
       {live?.enabled && live.total > 0 && (
         <p className="live-banner">
           <span className="live-dot" aria-hidden />

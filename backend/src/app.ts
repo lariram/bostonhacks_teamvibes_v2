@@ -18,6 +18,7 @@ import { PLACES } from './data/places.js';
 import type { LiveEvents } from './live/liveEvents.js';
 import type { Images } from './images.js';
 import { Db, newId } from './db.js';
+import { generateAgenda } from './agenda.js';
 import { buildIcs, type IcsEvent } from './ics.js';
 import { recommend } from './recommender.js';
 import { nearestStation, tStopBingo } from './live/stations.js';
@@ -614,6 +615,28 @@ export function createApp(db: Db, opts: AppOptions = {}) {
       }
       db.save();
       return { saved: i < 0 };
+    }),
+  );
+
+  // ───────────── surprise agenda ─────────────
+  app.post(
+    '/api/agenda',
+    auth,
+    h((req) => {
+      const b = req.body ?? {};
+      const start = NEIGHBORHOODS.find((n) => n.id === b.start)?.id;
+      const price = PRICE_TIERS.find((t) => t.id === b.price)?.id ?? req.user.lastPrice ?? '20to40';
+      const date = typeof b.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(b.date) ? b.date : undefined;
+      const { days } = generateAgenda(
+        { span: b.span === 'week' ? 'week' : 'day', pace: b.pace === 'stay' ? 'stay' : 'wander', start, price, date },
+        { user: req.user, places: catalog.candidates(now()), random, now: now() },
+      );
+      return {
+        days: days.map((d) => ({
+          ...d,
+          route: d.route.map((id) => ({ id, label: NEIGHBORHOOD_BY_ID[id].label })),
+        })),
+      };
     }),
   );
 

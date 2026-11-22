@@ -96,6 +96,8 @@ Follow people from your groups, from the feed, or from their profile. The feed o
 
 **Share your day.** Once you have finished two or more stops in a day, the "Next stop?" screen and My line offer **Share your day**: every stop in order (times, neighborhoods, your stars, never your private reviews) as one post drawn as a line, with a caption. Sharing again updates the same post. API: `GET /api/day`, `POST /api/day/share`.
 
+**Plan it for me.** "Can't decide at all?" on Discover builds a random solo **day** (about five stops, 10:30 AM to evening) or **week of evenings** (two stops on weeknights, three on weekends). Each stop is a short walk from the last (about 1.3 km, widening only if nothing fits), open when you arrive, within budget, never repeated, and weighted toward your tastes. **Stay put** keeps it in one neighborhood; **Wander** may drift into an adjacent one, and a week picks up each day where the last one ended. Shuffle, or add every stop to My line. Code: `backend/src/agenda.ts`, `POST /api/agenda`.
+
 ## Photos
 
 Every recommendation can show a real photo (never AI-generated), always with a credit:
