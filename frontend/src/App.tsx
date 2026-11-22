@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
 import { NavBar } from './components/NavBar';
 import { AuthProvider, useAuth } from './lib/auth';
@@ -16,6 +16,15 @@ import Rate from './pages/Rate';
 import Results from './pages/Results';
 import Signup from './pages/Signup';
 import Start from './pages/Start';
+
+/** New screen, start at the top (SPA navigation keeps the old scroll otherwise) */
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+}
 
 function Frame({ children, nav }: { children: ReactNode; nav?: boolean }) {
   return (
@@ -52,6 +61,7 @@ function PublicOnly() {
 export default function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <AuthProvider>
         <RecSessionProvider>
           <Routes>

@@ -11,7 +11,9 @@ import {
   TYPES,
   AVATAR_COLORS,
 } from './data/meta.js';
-import { PLACES, PLACE_BY_ID } from './data/places.js';
+import { Catalog } from './catalog.js';
+import { PLACES } from './data/places.js';
+import type { LiveEvents } from './live/liveEvents.js';
 import { Db, newId } from './db.js';
 import { recommend } from './recommender.js';
 import {
@@ -45,11 +47,15 @@ const fail = (status: number, message: string): never => {
 export interface AppOptions {
   random?: () => number;
   now?: () => Date;
+  /** Today's real events; omit for catalog-only (tests, offline) */
+  live?: LiveEvents | null;
 }
 
 export function createApp(db: Db, opts: AppOptions = {}) {
   const random = opts.random ?? Math.random;
   const now = opts.now ?? (() => new Date());
+  const catalog = new Catalog(db, opts.live ?? null);
+  const placeOf = (id: string) => catalog.get(id);
   const app = express();
   app.use(cors());
   app.use(express.json({ limit: '100kb' }));
@@ -181,7 +187,7 @@ export function createApp(db: Db, opts: AppOptions = {}) {
     h((req) => {
       const u = req.user;
       const completed = db.data.plans.filter((p) => p.userId === u.id && p.status === 'completed');
-      const visited = new Set(completed.map((p) => PLACE_BY_ID[p.placeId]?.neighborhood).filter(Boolean));
+      const visited = new Set(completed.map((p) => placeOf(p.placeId)?.neighborhood).filter(Boolean));
       const groups = db.data.groups.filter((g) => g.memberIds.includes(u.id) && g.status !== 'ended');
       const topTags = Object.entries(u.tagWeights)
         .filter(([, w]) => w > 0)
@@ -242,7 +248,7 @@ export function createApp(db: Db, opts: AppOptions = {}) {
     auth,
     h((req) => {
       const r = parseRecRequest(req.body);
-      const lastShown = (r.excludeIds ?? []).slice(-2).map((id) => PLACE_BY_ID[id]).filter(Boolean);
+      const lastShown = (r.excludeIds ?? []).slice(-2).map((id) => placeOf(id)).filter((p): p is NonNullable<typeof p> => !!p);
 
       // Don't re-suggest what you're doing / just did today (only as a last resort)
       const dayAgo = now().getTime() - 24 * 60 * 60 * 1000;
@@ -266,7 +272,7 @@ export function createApp(db: Db, opts: AppOptions = {}) {
       db.save();
 
       const result = recommend(r, {
-        places: PLACES,
+        places: catalog.candidates(now()),
         members,
         communityRatings: communityRatings(db),
         now: now(),
@@ -274,7 +280,23 @@ export function createApp(db: Db, opts: AppOptions = {}) {
         random,
         selfId: req.user.id,
       });
+      opts.live?.ensureFresh(); // background; never blocks this request
       return result;
+    }),
+  );
+
+  // What's on today, and how each live source is doing
+  app.get(
+    '/api/live',
+    h(() => {
+      if (!opts.live) return { date: null, total: 0, sources: [], enabled: false };
+      opts.live.ensureFresh();
+      const status = opts.live.status(now());
+      return {
+        ...status,
+        enabled: true,
+        upcoming: opts.live.events(now()).slice(0, 5).map((p) => ({ id: p.id, name: p.name, startsAt: p.live!.startsAt, source: p.live!.sourceName })),
+      };
     }),
   );
 
@@ -283,8 +305,9 @@ export function createApp(db: Db, opts: AppOptions = {}) {
     '/api/plans',
     auth,
     h((req) => {
-      const place = PLACE_BY_ID[String(req.body?.placeId)];
+      const place = catalog.get(String(req.body?.placeId));
       if (!place) fail(404, 'Unknown place');
+      catalog.remember(place!);
       const request = parseRecRequest(req.body?.request ?? { location: 'anywhere', type: place!.type, price: '40plus', duration: 'day' });
 
       let groupId: string | undefined;
@@ -338,7 +361,7 @@ export function createApp(db: Db, opts: AppOptions = {}) {
       const plan = ownPlan(req);
       const rating = Number(req.body?.rating);
       if (!Number.isInteger(rating) || rating < 1 || rating > 5) fail(400, 'Pick 1–5 stars');
-      const place = PLACE_BY_ID[plan.placeId];
+      const place = catalog.get(plan.placeId)!;
       const wasCompleted = plan.status === 'completed';
 
       plan.status = 'completed';
@@ -399,7 +422,7 @@ export function createApp(db: Db, opts: AppOptions = {}) {
             caption: p.caption,
             createdAt: p.createdAt,
             user: author ? publicUser(author) : null,
-            place: PLACE_BY_ID[p.placeId],
+            place: catalog.get(p.placeId),
             group: group && group.status === 'active' ? { id: group.id, name: group.name, size: group.memberIds.length } : null,
             likes: p.likes.length,
             likedByMe: p.likes.includes(req.user.id),
@@ -416,7 +439,7 @@ export function createApp(db: Db, opts: AppOptions = {}) {
     h((req) => {
       const post = db.data.posts.find((p) => p.id === req.params.id);
       if (!post) fail(404, 'Post not found');
-      const place = PLACE_BY_ID[post!.placeId];
+      const place = catalog.get(post!.placeId)!;
       const kind = req.body?.kind;
       const u = req.user;
       if (kind === 'like') {
@@ -447,14 +470,14 @@ export function createApp(db: Db, opts: AppOptions = {}) {
       db.data.groups
         .filter((g) => g.memberIds.includes(req.user.id) && g.status !== 'ended')
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-        .map((g) => groupProfile(db, g)),
+        .map((g) => groupProfile(db, g, placeOf)),
     ),
   );
 
   app.get(
     '/api/groups/:id',
     auth,
-    h((req) => groupProfile(db, memberGroup(req))),
+    h((req) => groupProfile(db, memberGroup(req), placeOf)),
   );
 
   // "Want another activity with the same group?" → yes
@@ -469,7 +492,7 @@ export function createApp(db: Db, opts: AppOptions = {}) {
         systemMessage(db, g.id, `🎉 ${g.name} is official! Your group profile is saved under Profile.`);
       }
       db.save();
-      return groupProfile(db, g);
+      return groupProfile(db, g, placeOf);
     }),
   );
 
@@ -480,7 +503,7 @@ export function createApp(db: Db, opts: AppOptions = {}) {
       const g = memberGroup(req);
       if (typeof req.body?.name === 'string' && req.body.name.trim()) g.name = req.body.name.trim().slice(0, 40);
       db.save();
-      return groupProfile(db, g);
+      return groupProfile(db, g, placeOf);
     }),
   );
 
@@ -509,7 +532,7 @@ export function createApp(db: Db, opts: AppOptions = {}) {
         (p) => p.userId === req.user.id && p.groupId === g.id && p.placeId === current.placeId && p.status === 'active',
       );
       if (existing) return planView(existing);
-      const place = PLACE_BY_ID[current.placeId];
+      const place = catalog.get(current.placeId)!;
       const plan: Plan = {
         id: newId('plan'),
         userId: req.user.id,
@@ -572,9 +595,9 @@ export function createApp(db: Db, opts: AppOptions = {}) {
     const g = plan.groupId ? db.data.groups.find((x) => x.id === plan.groupId) : undefined;
     return {
       ...plan,
-      place: PLACE_BY_ID[plan.placeId],
-      neighborhoodLabel: NEIGHBORHOOD_BY_ID[PLACE_BY_ID[plan.placeId].neighborhood].label,
-      group: g ? groupProfile(db, g) : null,
+      place: catalog.get(plan.placeId),
+      neighborhoodLabel: NEIGHBORHOOD_BY_ID[catalog.get(plan.placeId)?.neighborhood ?? 'downtown'].label,
+      group: g ? groupProfile(db, g, placeOf) : null,
     };
   }
 

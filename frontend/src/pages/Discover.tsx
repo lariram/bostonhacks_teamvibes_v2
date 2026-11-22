@@ -7,10 +7,12 @@ import { crewLine, LINES, NEIGHBORHOOD_LINES, TYPE_COLORS, TYPE_LINE } from '../
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { useRecSession } from '../lib/session';
-import type { DurationId, Group, PlaceType, PriceTier, RecRequest, TimeOfDay } from '../lib/types';
+import type { DurationId, Group, LiveStatus, PlaceType, PriceTier, RecRequest, TimeOfDay } from '../lib/types';
 import { currentTimeOfDay, TIME_LABEL } from '../lib/util';
 
 type When = 'now' | TimeOfDay;
+
+const joinNames = (names: string[]) => (names.length <= 1 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`);
 
 /** One stop on the route. The line fills in as you answer. */
 function Stop({ label, value, done, children }: { label: string; value?: string; done: boolean; children: ReactNode }) {
@@ -43,6 +45,12 @@ export default function Discover() {
   const [duration, setDuration] = useState<DurationId | null>(last?.duration ?? null);
   const [when, setWhen] = useState<When>('now');
   const [groupMode, setGroupMode] = useState<boolean>(last?.groupMode ?? false);
+
+  // How many real events are on today (shown as a live indicator)
+  const [live, setLive] = useState<LiveStatus | null>(null);
+  useEffect(() => {
+    api<LiveStatus>('/live').then(setLive).catch(() => setLive(null));
+  }, []);
 
   useEffect(() => {
     if (!groupId) return setGroup(null);
@@ -101,6 +109,15 @@ export default function Discover() {
       )}
       <h1 className="title">{group ? 'Where to next?' : 'Where to?'}</h1>
       <p className="lede">Four quick stops. We'll do the deciding.</p>
+      {live?.enabled && live.total > 0 && (
+        <p className="live-banner">
+          <span className="live-dot" aria-hidden />
+          <span>
+            <strong>{live.total}</strong> {live.total === 1 ? 'event' : 'events'} on in Boston today
+          </span>
+          <span className="live-banner__src muted">From {joinNames(live.sources.filter((x) => x.count > 0).map((x) => x.name))}</span>
+        </p>
+      )}
 
       <ol className="route" style={{ '--line': lineColor } as CSSProperties}>
         <Stop label="Where" value={location === 'anywhere' ? 'Anywhere' : label(meta.neighborhoods, location)} done={!!location}>

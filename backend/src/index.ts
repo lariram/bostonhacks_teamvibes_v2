@@ -4,13 +4,25 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createApp } from './app.js';
 import { Db } from './db.js';
+import { LiveEvents, liveSourcesFromEnv } from './live/liveEvents.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
+
+// API keys etc. live in backend/.env (see .env.example); it's optional
+const envFile = path.join(here, '..', '.env');
+if (fs.existsSync(envFile)) process.loadEnvFile(envFile);
 const dbFile = process.env.DB_FILE ?? path.join(here, '..', 'data', 'db.json');
 const port = Number(process.env.PORT ?? 3001);
 
 const db = new Db(dbFile);
-const app = createApp(db);
+
+// Today's real events (university calendars by default; more with API keys)
+const sources = liveSourcesFromEnv();
+const live = sources.length ? new LiveEvents(sources) : null;
+live?.start();
+console.log(sources.length ? `Live events from: ${sources.map((s) => s.name).join(', ')}` : 'Live events: off (catalog only)');
+
+const app = createApp(db, { live });
 
 // In production, serve the built frontend from the same server (npm run build first)
 const webDist = path.join(here, '..', '..', 'frontend', 'dist');

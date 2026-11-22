@@ -9,7 +9,12 @@ import { crewLine, LINES, linesFromStop, TYPE_COLORS, TYPE_LINE } from '../confi
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import type { Plan } from '../lib/types';
-import { formatMinutes, mapsSearchUrl, osmEmbedUrl, TIME_LABEL, transitDirectionsUrl } from '../lib/util';
+import { formatMinutes, liveRange, liveWhen, mapsSearchUrl, osmEmbedUrl, TIME_LABEL, timeAgo, transitDirectionsUrl } from '../lib/util';
+
+const updatedAgo = (iso: string) => {
+  const t = timeAgo(iso);
+  return t === 'just now' ? t : `${t} ago`;
+};
 
 /** "Gives exact address (map) and more details" */
 export default function PlanDetails() {
@@ -45,9 +50,15 @@ export default function PlanDetails() {
       <StationSign
         color={TYPE_COLORS[place.type]}
         kicker={
-          <>
-            <LineDot line={TYPE_LINE[place.type]} size={9} /> {place.type} · {plan.neighborhoodLabel}
-          </>
+          place.live ? (
+            <>
+              <span className="live-dot" aria-hidden /> {liveWhen(place.live)} · {plan.neighborhoodLabel}
+            </>
+          ) : (
+            <>
+              <LineDot line={TYPE_LINE[place.type]} size={9} /> {place.type} · {plan.neighborhoodLabel}
+            </>
+          )
         }
         title={place.name}
       >
@@ -62,6 +73,7 @@ export default function PlanDetails() {
           Open in Maps <ArrowIcon size={14} />
         </a>
       </div>
+      {place.live?.approxLocation && <p className="tiny muted">Pin shows the neighborhood. The event page has the exact spot.</p>}
 
       <dl className="facts">
         <div>
@@ -76,20 +88,48 @@ export default function PlanDetails() {
         <div>
           <dt className="label">Cost</dt>
           <dd>
-            {place.priceNote} <span className="muted">({price})</span>
+            {place.priceNote} {price && price !== place.priceNote && <span className="muted">({price})</span>}
           </dd>
         </div>
         <div>
           <dt className="label">Time</dt>
           <dd>
-            ~{formatMinutes(place.minutes)} <span className="muted">· best {place.times.map((t) => TIME_LABEL[t].toLowerCase()).join(', ')}</span>
+            {place.live ? (
+              <>
+                Today, {liveRange(place.live)}
+                {place.live.endEstimated && !place.live.timeTBA && <span className="muted"> · about {formatMinutes(place.minutes)}</span>}
+              </>
+            ) : (
+              <>
+                ~{formatMinutes(place.minutes)} <span className="muted">· best {place.times.map((t) => TIME_LABEL[t].toLowerCase()).join(', ')}</span>
+              </>
+            )}
           </dd>
         </div>
+        {place.live && (
+          <div>
+            <dt className="label">Listing</dt>
+            <dd>
+              {place.live.sourceName}
+              <span className="muted"> · updated {updatedAgo(place.live.fetchedAt)}</span>
+              <span className="facts__links">
+                <a href={place.live.url} target="_blank" rel="noreferrer" className="facts__link">
+                  Event page <ArrowIcon size={14} />
+                </a>
+                {place.live.ticketUrl && place.live.ticketUrl !== place.live.url && (
+                  <a href={place.live.ticketUrl} target="_blank" rel="noreferrer" className="facts__link">
+                    {place.live.source === 'localist' ? 'Register' : 'Tickets'} <ArrowIcon size={14} />
+                  </a>
+                )}
+              </span>
+            </dd>
+          </div>
+        )}
       </dl>
 
       <p className="details__blurb">{place.blurb}</p>
       <div className="local-tip">
-        <span className="label">Local tip</span>
+        <span className="label">{place.live ? 'Good to know' : 'Local tip'}</span>
         <p>{place.localTip}</p>
       </div>
 

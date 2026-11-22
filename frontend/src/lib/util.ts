@@ -1,4 +1,4 @@
-import type { TimeOfDay } from './types';
+import type { LiveInfo, TimeOfDay } from './types';
 
 export function timeAgo(iso: string): string {
   const s = Math.max(0, (Date.now() - Date.parse(iso)) / 1000);
@@ -56,4 +56,25 @@ export function osmEmbedUrl(lat: number, lng: number) {
   const dy = 0.0035;
   const bbox = [lng - dx, lat - dy, lng + dx, lat + dy].map((n) => n.toFixed(5)).join(',');
   return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik`;
+}
+
+/** Event times are always shown in Boston time */
+const bostonClock = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit' });
+export function bostonTime(iso: string): string {
+  return bostonClock.format(new Date(iso)).replace(':00', '');
+}
+
+/** "Today · 7:30 PM" */
+export function liveWhen(live: LiveInfo): string {
+  return live.timeTBA ? 'Today · time TBA' : `Today · ${bostonTime(live.startsAt)}`;
+}
+
+/** "7:30 – 10 PM" when we know the real end, otherwise just the start */
+export function liveRange(live: LiveInfo): string {
+  if (live.timeTBA) return 'Time TBA';
+  const start = bostonTime(live.startsAt);
+  if (!live.endsAt || live.endEstimated) return start;
+  const end = bostonTime(live.endsAt);
+  const [s, sm] = [start.replace(/ (AM|PM)$/, ''), start.slice(-2)];
+  return sm === end.slice(-2) ? `${s} – ${end}` : `${start} – ${end}`;
 }

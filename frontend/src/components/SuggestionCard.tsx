@@ -1,10 +1,17 @@
 import { NEIGHBORHOOD_LINES, TYPE_COLORS, linesFromStop } from '../config';
 import { useAuth } from '../lib/auth';
 import type { Suggestion } from '../lib/types';
-import { formatMinutes } from '../lib/util';
+import { formatMinutes, liveWhen } from '../lib/util';
 import { ArrowIcon } from './Icons';
 import { TypeTag } from './PlaceBadge';
 import { LineDots } from './Transit';
+
+/** "Kendall/MIT (Red) · 4 min walk" → "Kendall/MIT · 4 min walk" */
+function shortStop(stop: string): string {
+  const name = stop.split(/[(,]| or |·/)[0].trim();
+  const walk = stop.match(/(\d+) min walk/);
+  return walk ? `${name} · ${walk[1]} min walk` : name;
+}
 
 interface Props {
   suggestion: Suggestion;
@@ -26,15 +33,23 @@ export function SuggestionCard({ suggestion, letter, onChoose, busy }: Props) {
         {letter}
       </span>
       <div className="suggestion__body">
-        <TypeTag type={place.type}>{hood}</TypeTag>
+        {place.live ? (
+          <p className="live-kicker">
+            <span className="live-dot" aria-hidden />
+            {liveWhen(place.live)} <span className="live-kicker__src">· {hood}</span>
+          </p>
+        ) : (
+          <TypeTag type={place.type}>{hood}</TypeTag>
+        )}
         <h3 className="suggestion__name">{place.name}</h3>
         <p className="suggestion__meta">
           <span>{price}</span>
-          <span>~{formatMinutes(place.minutes)}</span>
+          {!place.live?.endEstimated && <span>~{formatMinutes(place.minutes)}</span>}
           <span className="suggestion__stop">
             <LineDots lines={stopLines.length ? stopLines : NEIGHBORHOOD_LINES[place.neighborhood] ?? []} size={8} />
-            {place.tStop.split(/[(,]| or /)[0].trim()}
+            {shortStop(place.tStop)}
           </span>
+          {place.live && <span className="muted">via {place.live.sourceName}</span>}
         </p>
         <p className="suggestion__blurb">{place.blurb}</p>
         <ul className="reasons">

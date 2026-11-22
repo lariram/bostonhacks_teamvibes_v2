@@ -47,6 +47,33 @@ export interface Place {
   blurb: string;
   /** "Only a Bostonian would tell you this" tip */
   localTip: string;
+  /** Set for real, dated events pulled from live sources (today only) */
+  live?: LiveInfo;
+}
+
+export type LiveSourceId = 'ticketmaster' | 'localist' | 'google';
+
+export interface LiveInfo {
+  source: LiveSourceId;
+  /** Human-readable source, e.g. "Ticketmaster" or "MIT Events" */
+  sourceName: string;
+  /** Event page on the source site */
+  url: string;
+  /** Ticket link, when different from the event page */
+  ticketUrl?: string;
+  /** ISO timestamps */
+  startsAt: string;
+  endsAt?: string;
+  /** End time is our estimate, not from the listing */
+  endEstimated?: boolean;
+  /** The listing has a date but no time */
+  timeTBA?: boolean;
+  venue?: string;
+  /** University calendar: may be campus-only */
+  campus?: boolean;
+  /** Pin is the neighborhood center, not the exact venue */
+  approxLocation?: boolean;
+  fetchedAt: string;
 }
 
 export interface Preferences {
@@ -173,4 +200,6 @@ export interface DbShape {
   groups: Group[];
   messages: ChatMessage[];
   posts: FeedPost[];
+  /** Snapshots of live events someone picked, so history works after they leave the cache */
+  livePlaces: Record<string, Place>;
 }

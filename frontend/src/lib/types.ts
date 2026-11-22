@@ -39,6 +39,31 @@ export interface Place {
   emoji: string;
   blurb: string;
   localTip: string;
+  /** Real, dated event from a live source (today only) */
+  live?: LiveInfo;
+}
+
+export interface LiveInfo {
+  source: 'ticketmaster' | 'localist' | 'google';
+  sourceName: string;
+  url: string;
+  ticketUrl?: string;
+  startsAt: string;
+  endsAt?: string;
+  endEstimated?: boolean;
+  timeTBA?: boolean;
+  venue?: string;
+  campus?: boolean;
+  approxLocation?: boolean;
+  fetchedAt: string;
+}
+
+export interface LiveStatus {
+  enabled: boolean;
+  date: string | null;
+  total: number;
+  sources: { id: string; name: string; ok: boolean | null; count: number; error?: string }[];
+  upcoming?: { id: string; name: string; startsAt: string; source: string }[];
 }
 
 export interface Preferences {

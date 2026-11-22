@@ -16,6 +16,7 @@ export class Db {
 
   constructor(private file: string | null) {
     this.data = this.load() ?? seed();
+    this.data.livePlaces ??= {}; // databases from before live events
     this.save();
   }
 
@@ -83,5 +84,5 @@ function seed(): DbShape {
     createdAt: new Date(now - p.hoursAgo * 60 * 60 * 1000).toISOString(),
   }));
 
-  return { users, sessions: {}, plans: [], groups: [], messages: [], posts };
+  return { users, sessions: {}, plans: [], groups: [], messages: [], posts, livePlaces: {} };
 }

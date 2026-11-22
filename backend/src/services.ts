@@ -1,6 +1,5 @@
 import crypto from 'node:crypto';
 import { NEIGHBORHOOD_BY_ID, PRICE_TIERS, priceRank } from './data/meta.js';
-import { PLACE_BY_ID } from './data/places.js';
 import { DEMO_LOCALS } from './data/seedUsers.js';
 import { Db, newId } from './db.js';
 import { companionScore, type TasteProfile } from './recommender.js';
@@ -194,7 +193,7 @@ export function groupBudget(members: User[]): PriceTier {
 }
 
 /** The "group profile": who's in it and what they have in common. */
-export function groupProfile(db: Db, g: Group) {
+export function groupProfile(db: Db, g: Group, getPlace: (id: string) => Place | undefined) {
   const members = groupMembers(db, g);
   const counts: Record<string, User[]> = {};
   for (const m of members) for (const t of allPrefs(m)) (counts[t] ??= []).push(m);
@@ -213,7 +212,7 @@ export function groupProfile(db: Db, g: Group) {
     members: members.map(publicUser),
     sharedInterests,
     budget: groupBudget(members),
-    activities: g.activities.map((a) => ({ ...a, place: PLACE_BY_ID[a.placeId] })).reverse(),
-    origin: PLACE_BY_ID[g.originPlaceId],
+    activities: g.activities.map((a) => ({ ...a, place: getPlace(a.placeId) })).filter((a) => a.place).reverse(),
+    origin: getPlace(g.originPlaceId),
   };
 }

@@ -8,7 +8,7 @@ Boston is America's college city: 35+ campuses, a quarter-million students, and 
 
 **common** kills the decision paralysis and the bubble at the same time:
 
-1. **Four quick stops:** where, what (event / activity / food), budget, and when. You get **two** options, A or B. That's the whole decision. Not feeling either? Tell it one thing ("Japanese", "cheaper") and get two more.
+1. **Four quick stops:** where, what (event / activity / food), budget, and when. You get **two** options, A or B. That's the whole decision. Not feeling either? Tell it one thing ("Japanese", "cheaper") and get two more. Picks include **real events happening today**, pulled live from Ticketmaster, Google's event listings and Boston university calendars.
 2. **"Find me a crew."** When you take a pick, you're matched with other Bostonians headed to the same spot.
 3. **Stay on with the crew.** Clicked with them? Keep the group for the rest of the day. The crew gets its own **group profile**, and picks only include things that work for *every* rider's tastes and budget.
 
@@ -42,9 +42,10 @@ Open **http://localhost:5173** and tap **Try it as a guest**. No sign-up needed.
 
 - API runs on `:3001`, web on `:5173` (Vite proxies `/api`). To use it on your phone, open the `Network:` URL that `npm run dev` prints (same Wi-Fi).
 - Data is stored in `backend/data/db.json` (gitignored). Delete it to reset; demo locals and starter feed posts re-seed on start.
+- **Live events work out of the box** from MIT and Northeastern calendars. For concerts, sports, comedy and Google's listings, add free API keys: copy `backend/.env.example` to `backend/.env` and fill it in (see [Live events](#live-events-whats-on-today)).
 
 ```bash
-npm test            # 21 backend tests: algorithm + end-to-end API flow
+npm test            # 37 backend tests: algorithm, live-event parsing, end-to-end API flow
 npm run typecheck   # both apps
 npm run build       # production build of the web app
 npm start           # one server on :3001 serving the API + built web app
@@ -87,6 +88,31 @@ The minimalism is on purpose: the app exists to remove decisions, so every scree
 
 *common is a student project and is not affiliated with the MBTA. The line colors are a nod to the T.*
 
+## Live events: what's on today
+
+On top of the 106 curated spots, common pulls **today's real events** (in Boston time) and mixes them into the picks. A real show tonight gets a boost and says so: *"Starts in 40 min"*, *"Only on today"*.
+
+| Source | What it adds | Setup |
+| --- | --- | --- |
+| **MIT + Northeastern calendars** (Localist public API) | Campus concerts, exhibits, talks, games, workshops: lots of them free | None. On by default |
+| **Ticketmaster Discovery API** | Concerts, sports, comedy and theater at Boston venues | Free key at [developer.ticketmaster.com](https://developer.ticketmaster.com) → `TICKETMASTER_API_KEY` |
+| **Google Events** via [SerpApi](https://serpapi.com) | Whatever Google shows for "Events in Boston" today | Free-tier key → `SERPAPI_API_KEY` (refreshes every 12 h to stay in the free tier) |
+
+Google has no official events API, so Google's listings come through SerpApi. Put keys in `backend/.env` (gitignored); never commit them.
+
+**How it stays trustworthy** (`backend/src/live/`):
+- **Today only, in Boston time,** whatever timezone the server is in. Events that already ended (or shows that started 45+ min ago) drop out.
+- **Only things in our 12 neighborhoods.** Each listing is placed by its real coordinates, then ZIP code, then address text. Away games ("Location: Norton, MA") and anything farther out (Gillette) are skipped.
+- **Only fun things.** Seminars, info sessions, career events, virtual events and thesis defenses are filtered out of the university feeds.
+- **Real details:** time range, cost, the nearest T stop computed from the venue (*"Kendall/MIT · 1 min walk"*), and links to the event page and tickets/registration. Campus events carry a note to check they're open to the public.
+- **De-duplicated:** the same show listed by two sources appears once (Ticketmaster wins), and a curated "see what's on at The Sinclair" entry is hidden when The Sinclair has a real show that night.
+- **Resilient:** each source is cached and refreshed on its own schedule in the background. A request never waits on the network, and one source failing never affects the others. `GET /api/live` shows each source's status.
+- **Picked events are saved,** so your history, the feed and crews keep working after an event leaves the live cache.
+
+**What was verified:** the university calendar integration was tested against the real MIT and Northeastern APIs. The Ticketmaster and SerpApi adapters follow their documented response formats and are covered by fixture tests, but weren't run against the live services (no keys during development). Try them with your own keys and check `GET /api/live`.
+
+If your network uses an HTTPS proxy, start the server with `NODE_USE_ENV_PROXY=1` so Node's `fetch` uses it.
+
 ## How the recommendation algorithm works
 
 `backend/src/recommender.ts` is pure functions, fully unit-tested.
@@ -112,6 +138,8 @@ backend/                 Node + Express + TypeScript
   src/data/places.ts     106 curated Boston spots (address, lat/lng, T stop, local tip)
   src/data/meta.ts       neighborhoods + adjacency, price tiers, durations, tags
   src/data/seedUsers.ts  simulated locals + starter feed posts (for demos)
+  src/live/              today's real events: sources, Boston time, location + T stop inference
+  src/catalog.ts         curated places + live events + saved picks, in one lookup
   src/recommender.ts     the algorithm
   src/services.ts        auth, taste profiles, crew matching, group profiles
   src/app.ts             REST API
@@ -135,13 +163,14 @@ frontend/                React + Vite + TypeScript (mobile-first)
 | POST | `/api/recommendations` | `{location,type,price,duration,timeOfDay?,groupMode?,groupId?,excludeIds?,feedback?}` → 2 picks |
 | POST | `/api/plans` | take a pick (forms a crew if `groupMode`) |
 | POST | `/api/plans/:id/complete` | rating, private notes, optional feed post |
+| GET | `/api/live` | today's live-event count and each source's status |
 | GET | `/api/history`, `/api/feed` | |
 | POST | `/api/feed/:id/react` | `like` / `want` (both shape recommendations) |
 | GET/POST | `/api/groups/:id`, `/keep`, `/messages`, `/join-current`, `/leave` | crew profile + chat |
 
 ## Notes and honest caveats
 
-- **Places are real; details are approximate.** Prices, hours and seasons are best-effort for a demo. Verify before relying on them. Events are modeled as venues and recurring happenings so the catalog doesn't go stale.
+- **Curated places are real; details are approximate.** Prices, hours and seasons in the catalog are best-effort for a demo. Live events come straight from their sources, but listings change, so check the event page before you go.
 - **The crew members you meet in a solo demo are simulated locals** (flagged `isDemo`), so one person can demo crews. Two real accounts that take the same spot with "Find me a crew" on **will** be matched together.
 - **Guest mode is for demos:** it skips sign-up (and the 18+ check), and logging out ends the guest account. Real accounts must be 18+. Every catalog spot is a public venue.
 - Auth is simple (scrypt-hashed passwords, bearer tokens): fine for a hackathon, not production-hardened.
@@ -149,7 +178,7 @@ frontend/                React + Vite + TypeScript (mobile-first)
 
 ## Where it could go next
 
-- Live events from Eventbrite / Ticketmaster / venue calendars on the same `Place` shape
+- More live sources: other Boston university calendars (add one to `KNOWN_LOCALIST` in `backend/src/live/sources/localist.ts`), Boston Public Library and venue iCal feeds
 - Real-time T arrivals from the MBTA V3 API on the station sign ("Next Orange Line: 4 min")
 - Skill levels for activities (beginner → expert) to match people learning the same thing
 - Identity verification at onboarding; real-time chat over WebSockets

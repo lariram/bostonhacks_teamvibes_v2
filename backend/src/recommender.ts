@@ -168,6 +168,7 @@ export function recommend(req: RecRequest, ctx: RecContext): RecResult {
     const community = ctx.communityRatings?.[place.id];
     if (community && community.count > 0) s += ((community.avg - 3) / 2) * 0.08;
     if (place.months) s += 0.05; // seasonal things are fleeting — nudge them up
+    if (place.live) s += place.live.timeTBA ? 0.08 : 0.15; // only happening today
     if (place.tags.some((t) => moreTags.has(t))) s += 0.25;
     if (req.feedback?.different) {
       const overlap = place.tags.filter((t) => lastShownTags.has(t)).length;
@@ -201,7 +202,7 @@ export function recommend(req: RecRequest, ctx: RecContext): RecResult {
     suggestions: picks.map((c) => ({
       place: c.place,
       score: Math.round(c.score * 100) / 100,
-      reasons: buildReasons(c.place, req, ctx, budget),
+      reasons: buildReasons(c.place, req, ctx, budget, now),
       stretchNote: c.stretchNote,
       communityRating: ctx.communityRatings?.[c.place.id],
     })),
@@ -221,10 +222,18 @@ function pickDiverse(sorted: Candidate[]): Candidate[] {
   return [first, second];
 }
 
-function buildReasons(place: Place, req: RecRequest, ctx: RecContext, budget: PriceTier): string[] {
+function buildReasons(place: Place, req: RecRequest, ctx: RecContext, budget: PriceTier, now: Date): string[] {
   const reasons: string[] = [];
   const members = ctx.members;
   const moreTags = new Set(req.feedback?.moreTags ?? []);
+
+  if (place.live) {
+    const mins = Math.round((Date.parse(place.live.startsAt) - now.getTime()) / 60_000);
+    if (place.live.timeTBA) reasons.push('Only on today');
+    else if (mins <= 0) reasons.push('Happening now');
+    else if (mins <= 90) reasons.push(`Starts in ${mins} min`);
+    else reasons.push('Only on today');
+  }
 
   const asked = place.tags.find((t) => moreTags.has(t));
   if (asked) reasons.push(`More ${lowerTag(asked)}, like you asked`);

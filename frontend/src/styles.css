@@ -672,6 +672,49 @@ ol {
   font-weight: 500;
 }
 
+/* ───────── live events ───────── */
+.live-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--red);
+  flex: none;
+  animation: blink 1.6s ease-in-out infinite;
+}
+.live-kicker {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--red);
+  margin: 0 0 6px;
+}
+.live-kicker__src {
+  color: var(--muted);
+  font-weight: 500;
+}
+.live-banner {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  font-size: 14px;
+  margin: -8px 0 20px;
+}
+.live-banner__src {
+  flex-basis: 100%;
+  padding-left: 16px;
+  font-size: 13px;
+}
+.facts__links {
+  display: flex;
+  gap: 16px;
+}
+
 /* ───────── results ───────── */
 .fork {
   width: 100%;
@@ -1540,6 +1583,11 @@ ol {
 @keyframes dash {
   to {
     background-position: 24px 0;
+  }
+}
+@keyframes blink {
+  50% {
+    opacity: 0.35;
   }
 }
 @keyframes ping {
