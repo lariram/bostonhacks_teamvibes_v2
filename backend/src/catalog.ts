@@ -4,6 +4,8 @@ import { distanceKm } from './live/geo.js';
 import type { LiveEvents } from './live/liveEvents.js';
 import type { Place } from './types.js';
 
+const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+
 /**
  * Every place the app knows about: the curated catalog, today's live events,
  * and snapshots of live events people have picked before (so history, the feed
@@ -32,8 +34,15 @@ export class Catalog {
     if (!live.length) return PLACES;
     // A real show tonight beats our generic "see what's on at this venue" entry
     const exact = live.filter((l) => l.type === 'event' && !l.live?.approxLocation);
+    const liveNames = live.map((l) => norm(l.name));
     const hidden = new Set(
-      PLACES.filter((p) => p.type === 'event' && exact.some((l) => distanceKm([p.lat, p.lng], [l.lat, l.lng]) < 0.12)).map((p) => p.id),
+      PLACES.filter(
+        (p) =>
+          p.type === 'event' &&
+          (exact.some((l) => distanceKm([p.lat, p.lng], [l.lat, l.lng]) < 0.12) ||
+            // the same thing by name ("Boston Ballet's The Nutcracker")
+            liveNames.some((n) => n.length >= 8 && (n.includes(norm(p.name)) || norm(p.name).includes(n)))),
+      ).map((p) => p.id),
     );
     return [...PLACES.filter((p) => !hidden.has(p.id)), ...live];
   }

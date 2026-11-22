@@ -2,6 +2,7 @@ import type { Place } from '../types.js';
 import { googleEventsSource } from './sources/googleEvents.js';
 import { KNOWN_LOCALIST, localistSource } from './sources/localist.js';
 import { ticketmasterSource } from './sources/ticketmaster.js';
+import { KNOWN_WP_EVENTS, wpEventsSource } from './sources/wpEvents.js';
 import type { LiveSource, SourceContext } from './sources/types.js';
 import { bostonDay, bostonParts } from './time.js';
 
@@ -20,7 +21,7 @@ export interface LiveStatus {
 }
 
 // When two sources list the same thing, prefer the most authoritative one
-const PRIORITY: Record<string, number> = { ticketmaster: 0, localist: 1, google: 2 };
+const PRIORITY: Record<string, number> = { ticketmaster: 0, localist: 1, community: 2, google: 3 };
 const RETRY_FAILED_MS = 10 * 60 * 1000;
 
 /**
@@ -188,6 +189,15 @@ export function liveSourcesFromEnv(env: NodeJS.ProcessEnv = process.env): LiveSo
     const cal = KNOWN_LOCALIST.find((c) => c.domain === domain);
     if (cal) sources.push(localistSource(cal));
     else console.warn(`[live] Unknown Localist calendar "${domain}": add it to KNOWN_LOCALIST with its campus info`);
+  }
+  const sites = (env.COMMUNITY_CALENDARS ?? KNOWN_WP_EVENTS.map((c) => c.domain).join(','))
+    .split(',')
+    .map((d) => d.trim())
+    .filter(Boolean);
+  for (const domain of sites) {
+    const site = KNOWN_WP_EVENTS.find((c) => c.domain === domain);
+    if (site) sources.push(wpEventsSource(site));
+    else console.warn(`[live] Unknown community calendar "${domain}": add it to KNOWN_WP_EVENTS`);
   }
   if (env.TICKETMASTER_API_KEY) sources.push(ticketmasterSource(env.TICKETMASTER_API_KEY));
   if (env.SERPAPI_API_KEY) sources.push(googleEventsSource(env.SERPAPI_API_KEY, Number(env.GOOGLE_EVENTS_REFRESH_HOURS) || 12));

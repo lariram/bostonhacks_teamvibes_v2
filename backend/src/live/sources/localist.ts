@@ -1,7 +1,7 @@
 import type { NeighborhoodId, Place, PlaceType, PriceTier } from '../../types.js';
 import { nearestStop } from '../stations.js';
 import { APPROX_T_STOP, neighborhoodCenter, neighborhoodForAddress, neighborhoodForPoint } from '../geo.js';
-import { cleanText, emojiFor, priceTierFor, tagsFor } from '../tags.js';
+import { cleanText, decodeHtml, emojiFor, priceTierFor, tagsFor } from '../tags.js';
 import { distanceKm } from '../geo.js';
 import { bostonParts, bostonWallTime, parseClock, timesForRange } from '../time.js';
 import type { LiveSource, SourceContext } from './types.js';
@@ -24,12 +24,14 @@ export interface LocalistCalendar {
 export const KNOWN_LOCALIST: LocalistCalendar[] = [
   { domain: 'calendar.mit.edu', name: 'MIT Events', short: 'mit', institution: 'MIT', city: 'Cambridge, MA', campus: 'cambridge', lat: 42.3601, lng: -71.0942 },
   { domain: 'calendar.northeastern.edu', name: 'Northeastern Events', short: 'neu', institution: 'Northeastern University', city: 'Boston, MA', campus: 'fenway', lat: 42.3398, lng: -71.0892 },
+  { domain: 'butodayevents.bu.edu', name: 'BU Events', short: 'bu', institution: 'Boston University', city: 'Boston, MA', campus: 'allston', lat: 42.3505, lng: -71.1054 },
+  { domain: 'events.bc.edu', name: 'Boston College Events', short: 'bc', institution: 'Boston College', city: 'Chestnut Hill, MA', campus: 'brighton', lat: 42.3355, lng: -71.1685 },
 ];
 
 // Academic/admin events aren't "things to do"
-const SKIP_TYPE = /(seminar|lecture|conference|career|meeting|information session|info session|training|thesis|defen[cs]e|webinar|admission|recruit|orientation|office hours|religious|class|course|deadline)/i;
+const SKIP_TYPE = /(seminar|lecture|conference|career|meeting|information session|info session|training|thesis|defen[cs]e|webinar|admission|recruit|orientation|office hours|religious|class|course|deadline|luncheon|presentation|employer)/i;
 const SKIP_TITLE =
-  /\b(info(rmation)? sessions?|office hours|seminar|colloquium|defen[cs]e|thesis|webinar|internship|career|recruit\w*|orientation|deadline|virtual|zoom|class:|course|faculty|staff meeting|dissertation|symposium|workshop series for|software|demonstration|poster|research)\b/i;
+  /\b(info(rmation)? sessions?|office hours|seminar|colloquium|defen[cs]e|thesis|webinar|internship|career|recruit\w*|orientation|deadline|virtual|zoom|class:|course|faculty|staff meeting|dissertation|symposium|workshop series for|software|demonstration|poster|research|coffee chat|networking|admissions|q&a|employers?|rehearsal|auditions?)\b/i;
 
 interface LocalistEvent {
   id: number;
@@ -70,6 +72,7 @@ export function normalizeLocalist(json: unknown, cal: LocalistCalendar, ctx: Pic
 
   for (const e of events) {
     if (e.experience === 'virtual' || (e.status && e.status !== 'live')) continue;
+    if (/\b(zoom|online|virtual|teams|webex)\b/i.test(e.location_name ?? '')) continue;
     const types = (e.filters?.event_types ?? []).map((t) => t.name);
     if (SKIP_TITLE.test(e.title)) continue;
     if (types.length && types.every((t) => SKIP_TYPE.test(t))) continue;
@@ -105,6 +108,8 @@ export function normalizeLocalist(json: unknown, cal: LocalistCalendar, ctx: Pic
     }
 
     const isAthletics = types.some((t) => /athletic|sport/i.test(t));
+    // "BC Women's Hockey at Northeastern" is an away game; home games say "vs."
+    if (isAthletics && /\s(at|@)\s/i.test(e.title)) continue;
     const tags = new Set(tagsFor([e.title, ...types, ...(e.keywords ?? []), ...(e.tags ?? [])].join(' '), desc));
     if (isAthletics) ['Sporting events', 'College sports', '50+ people'].forEach((t) => tags.add(t));
     if (types.some((t) => /exhibit/i.test(t))) tags.add('Museums');
@@ -148,7 +153,7 @@ export function normalizeLocalist(json: unknown, cal: LocalistCalendar, ctx: Pic
 
       out.push({
         id: `live-${cal.short}-${e.id}-${inst.id}`,
-        name: e.title.trim(),
+        name: decodeHtml(e.title).trim(),
         type,
         neighborhood: hood,
         price,

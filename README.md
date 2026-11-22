@@ -8,7 +8,7 @@ Boston is America's college city: 35+ campuses, a quarter-million students, and 
 
 **common** kills the decision paralysis and the bubble at the same time:
 
-1. **Four quick stops:** where, what (event / activity / food), budget, and when. You get **two** options, A or B. That's the whole decision. Not feeling either? Tell it one thing ("Japanese", "cheaper") and get two more. Picks include **real events happening today**, pulled live from Ticketmaster, Google's event listings and Boston university calendars.
+1. **Four quick stops:** where, what (event / activity / food), budget, and when. You get **two** options, A or B. That's the whole decision. Not feeling either? Tell it one thing ("Japanese", "cheaper") and get two more. Picks include **real events happening today**, pulled live from public Boston calendars (universities, Downtown Boston, Massachusetts 250, SoWa), plus Ticketmaster and Google's event listings if you add keys.
 2. **"Find me a crew."** When you take a pick, you're matched with other Bostonians headed to the same spot.
 3. **Stay on with the crew.** Clicked with them? Keep the group for the rest of the day. The crew gets its own **group profile**, and picks only include things that work for *every* rider's tastes and budget.
 
@@ -42,10 +42,10 @@ Open **http://localhost:5173** and tap **Try it as a guest**. No sign-up needed.
 
 - API runs on `:3001`, web on `:5173` (Vite proxies `/api`). To use it on your phone, open the `Network:` URL that `npm run dev` prints (same Wi-Fi).
 - Data is stored in `backend/data/db.json` (gitignored). Delete it to reset; demo locals and starter feed posts re-seed on start.
-- **Live events work out of the box** from MIT and Northeastern calendars. For concerts, sports, comedy and Google's listings, add free API keys: copy `backend/.env.example` to `backend/.env` and fill it in (see [Live events](#live-events-whats-on-today)).
+- **Live events work out of the box** from seven public calendars (MIT, Northeastern, BU, Boston College, Downtown Boston, Massachusetts 250, SoWa). For concerts, sports, comedy and Google's listings, add free API keys: copy `backend/.env.example` to `backend/.env` and fill it in (see [Live events](#live-events-whats-on-today)).
 
 ```bash
-npm test            # 37 backend tests: algorithm, live-event parsing, end-to-end API flow
+npm test            # 40 backend tests: algorithm, live-event parsing, end-to-end API flow
 npm run typecheck   # both apps
 npm run build       # production build of the web app
 npm start           # one server on :3001 serving the API + built web app
@@ -94,7 +94,8 @@ On top of the 106 curated spots, common pulls **today's real events** (in Boston
 
 | Source | What it adds | Setup |
 | --- | --- | --- |
-| **MIT + Northeastern calendars** (Localist public API) | Campus concerts, exhibits, talks, games, workshops: lots of them free | None. On by default |
+| **University calendars:** MIT, Northeastern, BU, Boston College (Localist public API) | Campus concerts, exhibits, readings, games, workshops: lots of them free | None. On by default |
+| **Community calendars:** Downtown Boston, Massachusetts 250, SoWa (WordPress events API) | Shows downtown and in the Theater District, history exhibits at Boston museums, SoWa markets in season | None. On by default |
 | **Ticketmaster Discovery API** | Concerts, sports, comedy and theater at Boston venues | Free key at [developer.ticketmaster.com](https://developer.ticketmaster.com) → `TICKETMASTER_API_KEY` |
 | **Google Events** via [SerpApi](https://serpapi.com) | Whatever Google shows for "Events in Boston" today | Free-tier key → `SERPAPI_API_KEY` (refreshes every 12 h to stay in the free tier) |
 
@@ -103,13 +104,13 @@ Google has no official events API, so Google's listings come through SerpApi. Pu
 **How it stays trustworthy** (`backend/src/live/`):
 - **Today only, in Boston time,** whatever timezone the server is in. Events that already ended (or shows that started 45+ min ago) drop out.
 - **Only things in our 12 neighborhoods.** Each listing is placed by its real coordinates, then ZIP code, then address text. Away games ("Location: Norton, MA") and anything farther out (Gillette) are skipped.
-- **Only fun things.** Seminars, info sessions, career events, virtual events and thesis defenses are filtered out of the university feeds.
+- **Only fun things.** Seminars, info sessions, career events, rehearsals, away games, Zoom/virtual events and thesis defenses are filtered out of the university feeds.
 - **Real details:** time range, cost, the nearest T stop computed from the venue (*"Kendall/MIT · 1 min walk"*), and links to the event page and tickets/registration. Campus events carry a note to check they're open to the public.
-- **De-duplicated:** the same show listed by two sources appears once (Ticketmaster wins), and a curated "see what's on at The Sinclair" entry is hidden when The Sinclair has a real show that night.
+- **De-duplicated:** the same show listed by two sources appears once (Ticketmaster wins), and a curated entry is hidden when the real listing is on today (by venue or by name, so the live Nutcracker replaces our generic one). Listings without coordinates borrow the exact location, T stop and price of a venue or show we already know.
 - **Resilient:** each source is cached and refreshed on its own schedule in the background. A request never waits on the network, and one source failing never affects the others. `GET /api/live` shows each source's status.
 - **Picked events are saved,** so your history, the feed and crews keep working after an event leaves the live cache.
 
-**What was verified:** the university calendar integration was tested against the real MIT and Northeastern APIs. The Ticketmaster and SerpApi adapters follow their documented response formats and are covered by fixture tests, but weren't run against the live services (no keys during development). Try them with your own keys and check `GET /api/live`.
+**What was verified:** all seven keyless calendars were tested against their real APIs (28 upcoming events on a sample weekday). The Ticketmaster and SerpApi adapters follow their documented response formats and are covered by fixture tests, but weren't run against the live services (no keys during development). Try them with your own keys and check `GET /api/live`.
 
 If your network uses an HTTPS proxy, start the server with `NODE_USE_ENV_PROXY=1` so Node's `fetch` uses it.
 
@@ -178,7 +179,7 @@ frontend/                React + Vite + TypeScript (mobile-first)
 
 ## Where it could go next
 
-- More live sources: other Boston university calendars (add one to `KNOWN_LOCALIST` in `backend/src/live/sources/localist.ts`), Boston Public Library and venue iCal feeds
+- More live sources: any Localist calendar (add it to `KNOWN_LOCALIST` in `backend/src/live/sources/localist.ts`) or WordPress "The Events Calendar" site (`KNOWN_WP_EVENTS` in `wpEvents.ts`). Harvard and Tufts have their calendar APIs turned off, and the Greenway, BPL and city calendars don't publish a feed we can use
 - Real-time T arrivals from the MBTA V3 API on the station sign ("Next Orange Line: 4 min")
 - Skill levels for activities (beginner → expert) to match people learning the same thing
 - Identity verification at onboarding; real-time chat over WebSockets

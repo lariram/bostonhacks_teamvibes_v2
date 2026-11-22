@@ -44,7 +44,7 @@ export interface Place {
 }
 
 export interface LiveInfo {
-  source: 'ticketmaster' | 'localist' | 'google';
+  source: 'ticketmaster' | 'localist' | 'community' | 'google';
   sourceName: string;
   url: string;
   ticketUrl?: string;

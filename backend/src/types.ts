@@ -51,7 +51,7 @@ export interface Place {
   live?: LiveInfo;
 }
 
-export type LiveSourceId = 'ticketmaster' | 'localist' | 'google';
+export type LiveSourceId = 'ticketmaster' | 'localist' | 'community' | 'google';
 
 export interface LiveInfo {
   source: LiveSourceId;

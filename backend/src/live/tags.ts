@@ -59,12 +59,19 @@ export function emojiFor(tags: string[], type: PlaceType): string {
   return EMOJI.find(([t]) => tags.includes(t))?.[1] ?? (type === 'food' ? '🍽️' : type === 'activity' ? '📍' : '🎟️');
 }
 
+const NAMED: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', ndash: '–', mdash: '—', rsquo: '’', lsquo: '‘', rdquo: '”', ldquo: '“', hellip: '…' };
+
+/** "Boston Ballet&#8217;s" → "Boston Ballet’s" */
+export function decodeHtml(text: string): string {
+  return text
+    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16)))
+    .replace(/&([a-z]+);/gi, (m, name) => NAMED[name.toLowerCase()] ?? m);
+}
+
 /** Strip HTML and collapse whitespace; keep it short for a card */
 export function cleanText(text: string | null | undefined, max = 200): string {
-  const plain = String(text ?? '')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
+  const plain = decodeHtml(String(text ?? '').replace(/<[^>]+>/g, ' '))
     .replace(/\s+/g, ' ')
     .trim();
   if (plain.length <= max) return plain;

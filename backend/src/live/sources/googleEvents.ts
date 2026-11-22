@@ -1,6 +1,6 @@
 import type { Place, PriceTier } from '../../types.js';
 import { APPROX_T_STOP, neighborhoodCenter, neighborhoodForAddress } from '../geo.js';
-import { cleanText, emojiFor, shortHash, tagsFor } from '../tags.js';
+import { decodeHtml, cleanText, emojiFor, shortHash, tagsFor } from '../tags.js';
 import { bostonWallTime, timesForRange } from '../time.js';
 import type { LiveSource, SourceContext } from './types.js';
 
@@ -90,7 +90,7 @@ export function normalizeGoogleEvents(json: unknown, ctx: Pick<SourceContext, 't
 
     out.push({
       id: `live-g-${shortHash(`${r.title}|${when}|${address}`)}`,
-      name: r.title.trim(),
+      name: decodeHtml(r.title).trim(),
       type: 'event',
       neighborhood: hood,
       price,

@@ -1,7 +1,7 @@
 import type { Place, PriceTier } from '../../types.js';
 import { nearestStop } from '../stations.js';
 import { APPROX_T_STOP, neighborhoodCenter, neighborhoodForAddress, neighborhoodForPoint } from '../geo.js';
-import { cleanText, emojiFor, priceTierFor, tagsFor } from '../tags.js';
+import { decodeHtml, cleanText, emojiFor, priceTierFor, tagsFor } from '../tags.js';
 import { bostonParts, bostonWallTime, timesForRange } from '../time.js';
 import type { LiveSource, SourceContext } from './types.js';
 
@@ -88,7 +88,7 @@ export function normalizeTicketmaster(json: unknown, ctx: Pick<SourceContext, 't
     if (Number.isNaN(start.getTime()) || bostonParts(start).date !== ctx.today) continue;
 
     // Ticketmaster often lists VIP/parking packages as separate "events"
-    const name = ev.name.replace(/\s*[-–:|]\s*(vip|premium|parking|package|upgrade).*$/i, '').trim();
+    const name = decodeHtml(ev.name).replace(/\s*[-–:|]\s*(vip|premium|parking|package|upgrade).*$/i, '').trim();
     const key = `${name.toLowerCase()}|${v.name}|${start.toISOString()}`;
     if (seen.has(key) || /\b(parking|vip package|upgrade)\b/i.test(ev.name)) continue;
     seen.add(key);

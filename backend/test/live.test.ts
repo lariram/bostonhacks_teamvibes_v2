@@ -10,6 +10,7 @@ import { normalizeGoogleEvents, parseWhen } from '../src/live/sources/googleEven
 import { KNOWN_LOCALIST, normalizeLocalist } from '../src/live/sources/localist.js';
 import { normalizeTicketmaster } from '../src/live/sources/ticketmaster.js';
 import type { LiveSource } from '../src/live/sources/types.js';
+import { KNOWN_WP_EVENTS, normalizeWpEvents } from '../src/live/sources/wpEvents.js';
 import { bostonDay, bostonParts, bostonWallTime, formatBostonTime, parseClock, timesForRange } from '../src/live/time.js';
 import { recommend } from '../src/recommender.js';
 import type { Place } from '../src/types.js';
@@ -96,6 +97,19 @@ describe('Localist (university calendars)', () => {
     expect(out[0].tags).toContain('College sports');
   });
 
+  it('skips away games listed as "at"', () => {
+    const json = {
+      events: [
+        ev({
+          title: "Women's Hockey at Northeastern",
+          location_name: 'Matthews Arena',
+          filters: { event_types: [{ name: 'Athletic' }] },
+        }),
+      ],
+    };
+    expect(normalizeLocalist(json, MIT, ctx)).toHaveLength(0);
+  });
+
   it('skips seminars, virtual events and other days', () => {
     const json = {
       events: [
@@ -134,6 +148,70 @@ describe('Localist (university calendars)', () => {
   it('keeps campus events on campus even near the river', () => {
     const json = { events: [ev({ title: 'Crafternoon', location_name: 'Building W97', geo: { latitude: '42.354653', longitude: '-71.1036' } })] };
     expect(normalizeLocalist(json, MIT, ctx)[0].neighborhood).toBe('cambridge');
+  });
+});
+
+describe('WordPress community calendars', () => {
+  const site = KNOWN_WP_EVENTS[0];
+  const wp = (over: Record<string, unknown>) => ({
+    id: Math.floor(Math.random() * 1e9),
+    title: 'Thing',
+    url: 'https://www.downtownboston.org/event/thing/',
+    status: 'publish',
+    all_day: false,
+    utc_start_date: '2026-11-23 00:30:00', // 7:30 PM Boston
+    utc_end_date: '2026-11-23 02:30:00',
+    cost: '',
+    cost_details: { values: [] },
+    categories: [],
+    venue: { venue: 'Somewhere', address: '1 Main St', city: 'Boston', zip: '02108' },
+    ...over,
+  });
+
+  it('decodes titles, places venues and skips out-of-area or virtual events', () => {
+    const out = normalizeWpEvents(
+      {
+        events: [
+          wp({ title: 'Boston Ballet&#8217;s The Nutcracker', venue: { venue: 'Citizens Opera House', address: '539 Washington St', city: 'Boston', zip: '02111' } }),
+          wp({ title: 'Stories of the Revolution', venue: { venue: 'Historical Society', city: 'North Andover', zip: '01845' } }),
+          wp({ title: 'Online talk', is_virtual: true }),
+          wp({ title: 'Free walking tour', cost: 'Free – $18', cost_details: { values: ['0', '18'] }, categories: [{ name: 'Tours' }] }),
+        ],
+      },
+      site,
+      ctx,
+    );
+    expect(out.map((p) => p.name)).toEqual(['Boston Ballet’s The Nutcracker', 'Free walking tour']);
+    const [nutcracker, tour] = out;
+    // matched to the show we already know: exact spot + real price instead of a guess
+    expect(nutcracker.neighborhood).toBe('theater');
+    expect(nutcracker.price).toBe('40plus');
+    expect(nutcracker.live!.approxLocation).toBe(false);
+    expect(formatBostonTime(new Date(nutcracker.live!.startsAt))).toBe('7:30 PM');
+    expect(tour.price).toBe('free');
+    expect(tour.neighborhood).toBe('downtown');
+    expect(tour.live!.approxLocation).toBe(true);
+  });
+
+  it('treats a multi-day run as open today', () => {
+    const [exhibit] = normalizeWpEvents(
+      {
+        events: [
+          wp({
+            title: 'Patriots of Color Exhibition',
+            utc_start_date: '2026-11-01 15:00:00',
+            utc_end_date: '2027-01-15 23:00:00',
+            categories: [{ name: 'Exhibit' }],
+            venue: { venue: 'Family Heritage Experience', city: 'Boston', zip: '02116', geo_lat: 42.3486, geo_lng: -71.0742 },
+          }),
+        ],
+      },
+      site,
+      ctx,
+    );
+    expect(exhibit.type).toBe('activity');
+    expect(exhibit.tags).toContain('Museums');
+    expect(formatBostonTime(new Date(exhibit.live!.startsAt))).toBe('10 AM');
   });
 });
 
@@ -273,8 +351,17 @@ describe('LiveEvents cache', () => {
     expect(status.total).toBe(1);
   });
 
-  it('only uses university calendars unless keys are set', () => {
-    expect(liveSourcesFromEnv({}).map((s) => s.id)).toEqual(['localist:calendar.mit.edu', 'localist:calendar.northeastern.edu']);
+  it('uses the keyless public calendars by default, and keyed sources only with keys', () => {
+    expect(liveSourcesFromEnv({}).map((s) => s.id)).toEqual([
+      'localist:calendar.mit.edu',
+      'localist:calendar.northeastern.edu',
+      'localist:butodayevents.bu.edu',
+      'localist:events.bc.edu',
+      'wp:www.downtownboston.org',
+      'wp:massachusetts250.org',
+      'wp:www.sowaboston.com',
+    ]);
+    expect(liveSourcesFromEnv({}).map((s) => s.id)).not.toContain('ticketmaster');
     expect(liveSourcesFromEnv({ TICKETMASTER_API_KEY: 'k', SERPAPI_API_KEY: 'k' }).map((s) => s.id)).toContain('ticketmaster');
     expect(liveSourcesFromEnv({ LIVE_EVENTS: 'off' })).toEqual([]);
   });
