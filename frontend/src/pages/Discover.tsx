@@ -7,10 +7,11 @@ import { crewLine, LINES, NEIGHBORHOOD_LINES, TYPE_COLORS, TYPE_LINE } from '../
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { useRecSession } from '../lib/session';
-import type { DurationId, Group, LiveStatus, PlaceType, PriceTier, RecRequest, TimeOfDay } from '../lib/types';
-import { currentTimeOfDay, TIME_LABEL } from '../lib/util';
+import type { Group, LiveStatus, PlaceType, PriceTier, RecRequest } from '../lib/types';
+import { clock, durationLabel, startSlots, windowLabel } from '../lib/util';
 
-type When = 'now' | TimeOfDay;
+/** 'now' or an ISO start time */
+type When = 'now' | string;
 
 const joinNames = (names: string[]) => (names.length <= 1 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`);
 
@@ -42,8 +43,9 @@ export default function Discover() {
   const [location, setLocation] = useState<string | null>(last?.location ?? null);
   const [type, setType] = useState<PlaceType | null>(last?.type ?? null);
   const [price, setPrice] = useState<PriceTier | null>(last?.price ?? me?.user.lastPrice ?? null);
-  const [duration, setDuration] = useState<DurationId | null>(last?.duration ?? null);
+  const [duration, setDuration] = useState<number | null>(last?.durationMinutes ?? null);
   const [when, setWhen] = useState<When>('now');
+  const slots = useMemo(() => startSlots(), []);
   const [groupMode, setGroupMode] = useState<boolean>(last?.groupMode ?? false);
 
   // How many real events are on today (shown as a live indicator)
@@ -59,7 +61,6 @@ export default function Discover() {
 
   const tierRank = (t: PriceTier) => meta?.priceTiers.findIndex((p) => p.id === t) ?? 0;
   const groupBudgetRank = group ? tierRank(group.budget) : Infinity;
-  const nowBucket = useMemo(() => currentTimeOfDay(), []);
 
   // Default to the crew's budget, and never sit above it
   useEffect(() => {
@@ -76,8 +77,8 @@ export default function Discover() {
       location,
       type,
       price,
-      duration,
-      timeOfDay: when === 'now' ? nowBucket : when,
+      durationMinutes: duration,
+      startAt: when === 'now' ? new Date().toISOString() : when,
       groupMode: group ? false : groupMode,
       groupId: group?.id,
     };
@@ -105,7 +106,7 @@ export default function Discover() {
           </div>
         </div>
       ) : (
-        <p className="label">Hi, {me?.user.firstName}</p>
+        <p className="label">{me?.user.persona === 'visitor' ? 'Welcome to Boston' : `Hi, ${me?.user.firstName}`}</p>
       )}
       <h1 className="title">{group ? 'Where to next?' : 'Where to?'}</h1>
       <p className="lede">Four quick stops. We'll do the deciding.</p>
@@ -159,21 +160,24 @@ export default function Discover() {
 
         <Stop
           label="When"
-          value={duration ? `${when === 'now' ? 'Now' : TIME_LABEL[when]} · ${label(meta.durations, duration)}` : undefined}
+          value={duration ? windowLabel(when === 'now' ? new Date() : new Date(when), duration) : undefined}
           done={!!duration}
         >
-          <Chip selected={when === 'now'} onClick={() => setWhen('now')}>
-            Now
-          </Chip>
-          {meta.timesOfDay.map((t) => (
-            <Chip key={t.id} selected={when === t.id} onClick={() => setWhen(t.id)}>
-              {t.label}
+          <p className="hint full">Starting</p>
+          <div className="time-scroller" role="radiogroup" aria-label="Start time">
+            <Chip selected={when === 'now'} onClick={() => setWhen('now')}>
+              Now
             </Chip>
-          ))}
-          <span className="chips__break" />
-          {meta.durations.map((d) => (
-            <Chip key={d.id} selected={duration === d.id} onClick={() => setDuration(d.id)}>
-              {d.label}
+            {slots.map((t) => (
+              <Chip key={t.toISOString()} selected={when === t.toISOString()} onClick={() => setWhen(t.toISOString())}>
+                {clock(t)}
+              </Chip>
+            ))}
+          </div>
+          <p className="hint full">For</p>
+          {(meta.durationOptions ?? [30, 60, 90, 120, 180, 240, 360]).map((m) => (
+            <Chip key={m} selected={duration === m} onClick={() => setDuration(m)}>
+              {durationLabel(m)}
             </Chip>
           ))}
         </Stop>

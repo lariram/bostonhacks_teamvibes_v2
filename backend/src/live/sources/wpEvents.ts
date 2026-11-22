@@ -102,12 +102,14 @@ export function normalizeWpEvents(json: unknown, site: WpEventsSite, ctx: Pick<S
     const dayEnd = bostonWallTime(ctx.today, 23, 59);
     if (start > dayEnd || (end && end < dayStart)) continue;
     let endEstimated = false;
+    let openHours = !!e.all_day || (e.categories ?? []).some((c) => /exhibit/i.test(c.name));
     if (e.all_day) {
       start = bostonWallTime(ctx.today, 10);
       end = bostonWallTime(ctx.today, 17);
       endEstimated = true;
     } else if (bostonParts(start).date !== ctx.today) {
       // a multi-day run (an exhibit that opened last week): treat as open today
+      openHours = true;
       start = bostonWallTime(ctx.today, 10);
       if (!end || end > dayEnd) {
         end = bostonWallTime(ctx.today, 17);
@@ -170,6 +172,7 @@ export function normalizeWpEvents(json: unknown, site: WpEventsSite, ctx: Pick<S
         startsAt: start.toISOString(),
         endsAt: end.toISOString(),
         endEstimated,
+        openHours,
         venue: v.venue ? decodeHtml(v.venue) : undefined,
         approxLocation: !point,
         fetchedAt: ctx.now.toISOString(),

@@ -1,4 +1,4 @@
-import type { DurationId, NeighborhoodId, PlaceType, PriceTier, TimeOfDay } from '../types.js';
+import type { DurationId, NeighborhoodId, Persona, PlaceType, PriceTier, TimeOfDay } from '../types.js';
 
 export interface Neighborhood {
   id: NeighborhoodId;
@@ -103,3 +103,26 @@ export const PREFERENCE_TAGS: Record<PlaceType, string[]> = {
 export const MAX_PREFS_PER_CATEGORY = 3;
 
 export const AVATAR_COLORS = ['#DA291C', '#00843D', '#003DA5', '#80276C', '#008EAA', '#4A5257'];
+
+/** Minutes for the legacy duration ids */
+export const DURATION_MINUTES: Record<DurationId, number> = { quick: 60, short: 120, half: 240, day: 600 };
+
+/** Durations offered in the app (30-minute / hour blocks) */
+export const DURATION_OPTIONS = [30, 60, 90, 120, 180, 240, 360];
+
+export const PERSONAS: { id: Persona; label: string; hint: string }[] = [
+  { id: 'student', label: 'Student', hint: 'Campus events, cheap eats, people your age' },
+  { id: 'local', label: 'Local', hint: 'Skip the tourist traps, find what’s new' },
+  { id: 'visitor', label: 'Visiting', hint: 'The Boston classics, done right' },
+  { id: 'newcomer', label: 'New in town', hint: 'Find your spots, and your people' },
+];
+
+/** Iconic Boston: great for visitors and newcomers */
+export const CLASSICS = new Set([
+  'freedom-trail', 'boston-common', 'swan-boats', 'quincy-market', 'union-oyster', 'tea-party', 'uss-constitution',
+  'bunker-hill', 'fenway-tour', 'mikes-pastry', 'aquarium', 'old-state-house', 'paul-revere-house', 'bpl', 'mfa',
+  'gardner', 'newbury', 'regina', 'frog-pond', 'esplanade',
+]);
+
+/** What locals tend to avoid */
+export const TOURIST_TRAPS = new Set(['quincy-market', 'union-oyster', 'tea-party', 'view-boston', 'swan-boats', 'mikes-pastry', 'faneuil-performers']);

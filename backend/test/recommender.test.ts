@@ -24,9 +24,9 @@ describe('catalog', () => {
     }
   });
 
-  it('can produce two suggestions for every neighborhood × type with a generous budget', () => {
+  it('can produce two food and activity picks for every neighborhood with a generous budget', () => {
     for (const hood of Object.keys(NEIGHBORHOOD_BY_ID)) {
-      for (const type of ['food', 'activity', 'event'] as const) {
+      for (const type of ['food', 'activity'] as const) {
         const r = recommend(
           { location: hood as RecRequest['location'], type, price: '40plus', duration: 'half' },
           { places: PLACES, members: [person('a', [])], now: NOV, random: fixedRandom },
@@ -38,6 +38,45 @@ describe('catalog', () => {
 });
 
 describe('recommend', () => {
+  it('never suggests a venue as an "event": only real, dated events', () => {
+    const r = recommend(
+      { location: 'theater', type: 'event', price: '40plus', duration: 'half' },
+      { places: PLACES, members: [person('a', ['Performing arts'])], now: NOV, random: fixedRandom },
+    );
+    expect(r.suggestions).toHaveLength(0);
+  });
+
+  it('stays in your neighborhood or right next door, never across town', () => {
+    for (const hood of Object.keys(NEIGHBORHOOD_BY_ID) as (keyof typeof NEIGHBORHOOD_BY_ID)[]) {
+      const allowed = [hood, ...NEIGHBORHOOD_BY_ID[hood].near];
+      for (const type of ['food', 'activity'] as const) {
+        const r = recommend(
+          { location: hood, type, price: 'free', duration: 'quick', timeOfDay: 'late' }, // hard to satisfy
+          { places: PLACES, members: [person('a', [])], now: NOV, random: fixedRandom },
+        );
+        for (const s of r.suggestions) expect(allowed, `${hood}/${type} → ${s.place.id}`).toContain(s.place.neighborhood);
+      }
+    }
+  });
+
+  it('prefers your own neighborhood over next door', () => {
+    const r = recommend(
+      { location: 'northend', type: 'food', price: '40plus', duration: 'short', timeOfDay: 'evening' },
+      { places: PLACES, members: [person('a', [])], now: NOV, random: fixedRandom },
+    );
+    expect(r.suggestions.every((s) => s.place.neighborhood === 'northend')).toBe(true);
+  });
+
+  it('leans on who you are', () => {
+    const base = { location: 'downtown' as const, type: 'food' as const, price: '10to20' as const, duration: 'short' as const, timeOfDay: 'afternoon' as const };
+    const forPersona = (persona: 'local' | 'visitor') =>
+      recommend(base, { places: PLACES, members: [person('a', [], { persona })], now: NOV, random: fixedRandom }).suggestions.map(
+        (s) => s.place.id,
+      );
+    expect(forPersona('visitor')).toContain('quincy-market'); // a classic for visitors
+    expect(forPersona('local')).not.toContain('quincy-market'); // locals skip it
+  });
+
   it('returns two distinct suggestions that match type and budget', () => {
     const r = recommend(base, { places: PLACES, members: [person('a', ['Chinese'])], now: NOV, random: fixedRandom });
     expect(r.suggestions).toHaveLength(2);
@@ -136,7 +175,7 @@ describe('group recommendations', () => {
 
   it('talks to you as "You" in group reasons', () => {
     const r = recommend(
-      { location: 'cambridge', type: 'activity', price: 'free', duration: 'short' },
+      { location: 'cambridge', type: 'activity', price: 'free', duration: 'short', timeOfDay: 'evening' },
       {
         places: PLACES,
         members: [person('maya', ['Games']), person('me', ['Games']), person('kev', ['History'])],
@@ -152,10 +191,10 @@ describe('group recommendations', () => {
 
   it('says when everyone shares an interest', () => {
     const r = recommend(
-      { location: 'cambridge', type: 'event', price: '20to40', duration: 'half', timeOfDay: 'evening' },
+      { location: 'chinatown', type: 'food', price: '20to40', duration: 'short', timeOfDay: 'evening' },
       {
         places: PLACES,
-        members: [person('a', ['Live music']), person('b', ['Live music', 'Comedy']), person('c', ['Live music'])],
+        members: [person('a', ['Chinese']), person('b', ['Chinese', 'Dessert']), person('c', ['Chinese'])],
         now: NOV,
         random: fixedRandom,
       },

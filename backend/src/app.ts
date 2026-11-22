@@ -10,6 +10,8 @@ import {
   TIMES_OF_DAY,
   TYPES,
   AVATAR_COLORS,
+  DURATION_OPTIONS,
+  PERSONAS,
 } from './data/meta.js';
 import { Catalog } from './catalog.js';
 import { PLACES } from './data/places.js';
@@ -91,6 +93,8 @@ export function createApp(db: Db, opts: AppOptions = {}) {
       types: TYPES,
       priceTiers: PRICE_TIERS,
       durations: DURATIONS.map(({ id, label }) => ({ id, label })),
+      durationOptions: DURATION_OPTIONS,
+      personas: PERSONAS,
       timesOfDay: TIMES_OF_DAY,
       preferenceTags: PREFERENCE_TAGS,
       maxPrefsPerCategory: MAX_PREFS_PER_CATEGORY,
@@ -234,7 +238,8 @@ export function createApp(db: Db, opts: AppOptions = {}) {
     '/api/me',
     auth,
     h((req) => {
-      const { bio, school } = req.body ?? {};
+      const { bio, school, persona } = req.body ?? {};
+      if (PERSONAS.some((p) => p.id === persona)) req.user.persona = persona;
       if (typeof bio === 'string') req.user.bio = bio.slice(0, 160);
       if (typeof school === 'string') req.user.school = school.slice(0, 60);
       db.save();
@@ -617,14 +622,19 @@ function parseRecRequest(body: any): RecRequest {
   if (!location) fail(400, 'Pick a location');
   if (!TYPES.some((t) => t.id === b.type)) fail(400, 'Pick a type');
   if (!PRICE_TIERS.some((t) => t.id === b.price)) fail(400, 'Pick a price range');
-  if (!DURATIONS.some((d) => d.id === b.duration)) fail(400, 'Pick a time frame');
+  const durationMinutes = Number(b.durationMinutes);
+  const hasMinutes = Number.isFinite(durationMinutes) && durationMinutes >= 15 && durationMinutes <= 720;
+  if (!hasMinutes && !DURATIONS.some((d) => d.id === b.duration)) fail(400, 'Pick how long you have');
+  const startAt = typeof b.startAt === 'string' && !Number.isNaN(Date.parse(b.startAt)) ? new Date(b.startAt).toISOString() : undefined;
   const timeOfDay = TIMES_OF_DAY.some((t) => t.id === b.timeOfDay) ? b.timeOfDay : undefined;
   const fb = b.feedback ?? {};
   return {
     location,
     type: b.type,
     price: b.price,
-    duration: b.duration,
+    duration: DURATIONS.some((d) => d.id === b.duration) ? b.duration : undefined,
+    durationMinutes: hasMinutes ? Math.round(durationMinutes) : undefined,
+    startAt,
     timeOfDay,
     groupMode: !!b.groupMode,
     groupId: typeof b.groupId === 'string' && b.groupId ? b.groupId : undefined,

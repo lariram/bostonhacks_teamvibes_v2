@@ -273,6 +273,31 @@ ol {
   flex-wrap: wrap;
   gap: 7px;
 }
+/* one swipeable line of start times */
+.time-scroller {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  flex-basis: 100%;
+  margin: 0 -22px 4px -4px;
+  padding: 2px 22px 6px 4px;
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(to right, #000 85%, transparent);
+  mask-image: linear-gradient(to right, #000 85%, transparent);
+}
+.time-scroller::-webkit-scrollbar {
+  display: none;
+}
+.time-scroller .chip {
+  flex: none;
+}
+.hint.full {
+  flex-basis: 100%;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 4px 0 2px;
+}
 .chips__break {
   flex-basis: 100%;
   height: 4px;
@@ -576,6 +601,51 @@ ol {
   margin-top: 6px;
 }
 
+/* ───────── who's riding ───────── */
+.persona-list {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--hair);
+}
+.persona {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--hair);
+  padding: 18px 2px;
+  cursor: pointer;
+  transition: background 0.12s, padding 0.15s var(--ease);
+}
+.persona strong {
+  font-size: 22px;
+  letter-spacing: -0.02em;
+}
+.persona:hover {
+  background: var(--fill);
+  padding-left: 10px;
+}
+.persona.on strong::after {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--red);
+  margin-left: 8px;
+  vertical-align: middle;
+}
+.persona-skip {
+  margin-top: 18px;
+}
+.persona-tag {
+  font-weight: 500;
+}
+
 /* ───────── discover: the route ───────── */
 .crew-banner {
   display: flex;
@@ -817,6 +887,15 @@ ol {
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--muted);
+}
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  border-top: 1.5px solid var(--hair);
+  padding-top: 18px;
+  font-size: 17px;
 }
 .reroll {
   margin-top: 18px;

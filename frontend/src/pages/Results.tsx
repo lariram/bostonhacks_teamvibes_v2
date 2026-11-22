@@ -11,6 +11,7 @@ import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { useRecSession } from '../lib/session';
 import type { Plan, RecFeedback } from '../lib/types';
+import { windowLabel } from '../lib/util';
 
 /** Two options, A or B. Regenerating opens the feedback sheet. */
 export default function Results() {
@@ -46,17 +47,23 @@ export default function Results() {
   const hood = req.location === 'anywhere' ? 'Anywhere' : meta?.neighborhoods.find((n) => n.id === req.location)?.label;
   const typeLabel = meta?.types.find((t) => t.id === req.type)?.label;
   const color = TYPE_COLORS[req.type];
+  const span = windowLabel(req.startAt ? new Date(req.startAt) : new Date(), req.durationMinutes ?? 120);
+  const none = !session.loading && !a;
 
   return (
     <div className="screen">
       <TopBar back="/discover" title={<span className="label label--muted">Round {session.round}</span>} />
       <p className="label">
-        {req.groupId ? 'For your crew' : 'For you'} · {typeLabel} · {hood}
+        {req.groupId ? 'For your crew' : 'For you'} · {typeLabel} · {hood} · {span}
         {session.budget && session.budget !== req.price && <> · max {meta?.priceTiers.find((t) => t.id === session.budget)?.label}</>}
       </p>
-      <h1 className="title">Your next stop.</h1>
-      <p className="lede">A or B. That's the whole decision.</p>
-      <Fork colorA={color} colorB={color} />
+      <h1 className="title">{none ? 'Nothing fits. Yet.' : b ? 'Your next stop.' : 'One good option.'}</h1>
+      {!none && (
+        <>
+          <p className="lede">{b ? "A or B. That's the whole decision." : 'Only one thing fits that window around here.'}</p>
+          <Fork colorA={color} colorB={b ? color : '#e5e5e2'} />
+        </>
+      )}
 
       {session.exhausted && <p className="notice">You've seen everything that fits, so here are a couple again. Loosen a filter for fresh picks.</p>}
       {error && <p className="error">{error}</p>}
@@ -74,17 +81,27 @@ export default function Results() {
               <SuggestionCard letter="B" suggestion={b} busy={choosing === b.place.id} onChoose={() => choose(b.place.id)} />
             </>
           )}
-          {!a && (
-            <p className="notice">
-              Nothing matched. <Link to="/discover">Try a different combo</Link>.
-            </p>
+          {none && (
+            <div className="empty-state">
+              <p>
+                {req.type === 'event'
+                  ? `No events start in ${hood} or right next door between ${span}.`
+                  : `Nothing in ${hood} or right next door fits ${span}.`}
+              </p>
+              <p className="muted small">We only suggest things nearby you can actually catch. Try a later start, more time, or another neighborhood.</p>
+              <Link to="/discover" className="btn btn--primary">
+                Change the plan
+              </Link>
+            </div>
           )}
         </div>
       )}
 
-      <button type="button" className="btn btn--ghost btn--block reroll" onClick={() => setFeedbackOpen(true)} disabled={session.loading}>
-        <RefreshIcon size={18} /> Neither. Show me two more
-      </button>
+      {!none && (
+        <button type="button" className="btn btn--ghost btn--block reroll" onClick={() => setFeedbackOpen(true)} disabled={session.loading}>
+          <RefreshIcon size={18} /> {b ? 'Neither. Show me two more' : 'Not this. Show me another'}
+        </button>
+      )}
 
       <FeedbackSheet open={feedbackOpen} onClose={() => setFeedbackOpen(false)} onSubmit={regenerate} />
     </div>

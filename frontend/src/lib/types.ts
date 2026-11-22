@@ -4,6 +4,7 @@ export type PlaceType = 'event' | 'activity' | 'food';
 export type PriceTier = 'free' | 'under10' | '10to20' | '20to40' | '40plus';
 export type DurationId = 'quick' | 'short' | 'half' | 'day';
 export type TimeOfDay = 'morning' | 'afternoon' | 'evening' | 'late';
+export type Persona = 'student' | 'local' | 'visitor' | 'newcomer';
 
 export interface Option<T extends string = string> {
   id: T;
@@ -17,6 +18,8 @@ export interface Meta {
   durations: Option<DurationId>[];
   timesOfDay: Option<TimeOfDay>[];
   preferenceTags: Record<PlaceType, string[]>;
+  durationOptions: number[];
+  personas: { id: Persona; label: string; hint: string }[];
   maxPrefsPerCategory: number;
   placeCount: number;
 }
@@ -52,6 +55,7 @@ export interface LiveInfo {
   endsAt?: string;
   endEstimated?: boolean;
   timeTBA?: boolean;
+  openHours?: boolean;
   venue?: string;
   campus?: boolean;
   approxLocation?: boolean;
@@ -91,6 +95,7 @@ export interface SelfUser extends PublicUser {
   wantIds: string[];
   lastPrice?: PriceTier;
   isGuest?: boolean;
+  persona?: Persona;
 }
 
 export interface Me {
@@ -111,7 +116,11 @@ export interface RecRequest {
   location: string;
   type: PlaceType;
   price: PriceTier;
-  duration: DurationId;
+  duration?: DurationId;
+  /** How long you have, in minutes */
+  durationMinutes?: number;
+  /** When you're starting (ISO); omitted = now */
+  startAt?: string;
   timeOfDay?: TimeOfDay;
   groupMode?: boolean;
   groupId?: string;

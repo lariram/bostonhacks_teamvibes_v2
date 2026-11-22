@@ -23,6 +23,8 @@ export interface LiveStatus {
 // When two sources list the same thing, prefer the most authoritative one
 const PRIORITY: Record<string, number> = { ticketmaster: 0, localist: 1, community: 2, google: 3 };
 const RETRY_FAILED_MS = 10 * 60 * 1000;
+/** Don't suggest anything that started more than this long ago */
+export const LATE_GRACE_MS = 30 * 60 * 1000;
 
 /**
  * Today's real events from every configured source, cached per source.
@@ -105,12 +107,13 @@ export class LiveEvents {
       .flatMap((s) => s.events)
       .filter((p) => {
         const live = p.live!;
-        if (live.timeTBA) return true;
+        if (live.timeTBA) return false; // no time = can't promise you'll catch it
         const start = Date.parse(live.startsAt);
         const end = live.endsAt ? Date.parse(live.endsAt) : start + p.minutes * 60_000;
-        if (end <= t) return false;
-        // something with a real end time (an exhibit) is fine to join late; a show isn't
-        return live.endEstimated ? start > t - 45 * 60_000 : true;
+        // drop-in hours (an exhibit): fine as long as there's time left to see it
+        if (live.openHours) return end >= t + 30 * 60_000;
+        // a show: only if it started no more than 30 minutes ago
+        return start >= t - LATE_GRACE_MS;
       })
       .sort((a, b) => (PRIORITY[a.live!.source] ?? 9) - (PRIORITY[b.live!.source] ?? 9));
 

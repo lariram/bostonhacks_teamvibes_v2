@@ -179,6 +179,7 @@ export function normalizeLocalist(json: unknown, cal: LocalistCalendar, ctx: Pic
           endsAt: end?.toISOString(),
           endEstimated: !end,
           timeTBA,
+          openHours: !!inst.all_day || types.some((t) => /exhibit/i.test(t)),
           venue: venue || undefined,
           campus: true,
           approxLocation: approx,

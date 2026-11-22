@@ -296,7 +296,7 @@ describe('Google Events (SerpApi)', () => {
 });
 
 function livePlace(over: Partial<Place> & { startsAt: string; source?: 'ticketmaster' | 'localist' | 'google' }): Place {
-  const { startsAt, source = 'ticketmaster', ...rest } = over;
+  const { startsAt, source = 'ticketmaster', endsAt, openHours, ...rest } = over as typeof over & { endsAt?: string; openHours?: boolean };
   return {
     id: `live-test-${Math.random()}`,
     name: 'Test Show',
@@ -314,7 +314,7 @@ function livePlace(over: Partial<Place> & { startsAt: string; source?: 'ticketma
     emoji: '🎶',
     blurb: 'A show.',
     localTip: '',
-    live: { source, sourceName: source, url: 'https://example.com', startsAt, endEstimated: true, fetchedAt: NOON.toISOString() },
+    live: { source, sourceName: source, url: 'https://example.com', startsAt, endsAt, endEstimated: !endsAt, openHours, fetchedAt: NOON.toISOString() },
     ...rest,
   };
 }
@@ -368,6 +368,39 @@ describe('LiveEvents cache', () => {
 });
 
 describe('live events in recommendations', () => {
+  const me = [{ id: 'a', firstName: 'A', prefs: new Set(['Live music']), weights: {}, doneIds: new Set<string>(), wantIds: new Set<string>() }];
+  const at = (h: number, m = 0) => bostonWallTime(TODAY, h, m);
+
+  it('only suggests events you can catch in the window you picked', () => {
+    const shows = [
+      livePlace({ id: 'early', name: 'Early', startsAt: at(18).toISOString(), minutes: 90 }),
+      livePlace({ id: 'inwin', name: 'In window', startsAt: at(19, 30).toISOString(), minutes: 90 }),
+      livePlace({ id: 'late', name: 'Too late', startsAt: at(22).toISOString(), minutes: 90 }),
+      livePlace({ id: 'started', name: 'Started 20 min before window', startsAt: at(18, 40).toISOString(), minutes: 90 }),
+    ];
+    const r = recommend(
+      { location: 'cambridge', type: 'event', price: '40plus', startAt: at(19).toISOString(), durationMinutes: 120 },
+      { places: shows, members: me, now: NOON, random: () => 0.5 },
+    );
+    expect(r.suggestions.map((s) => s.place.id).sort()).toEqual(['inwin', 'started']);
+  });
+
+  it('drops shows that started more than 30 minutes ago, keeps open exhibits', async () => {
+    const now = at(19);
+    const live = new LiveEvents(
+      [
+        fakeSource('ticketmaster', [
+          livePlace({ name: 'Started 20 min ago', startsAt: at(18, 40).toISOString() }),
+          livePlace({ name: 'Started 40 min ago', startsAt: at(18, 20).toISOString() }),
+          livePlace({ name: 'Exhibit open till 9', startsAt: at(10).toISOString(), endsAt: at(21).toISOString(), openHours: true } as never),
+        ]),
+      ],
+      { now: () => now, quiet: true },
+    );
+    await live.refresh();
+    expect(live.events().map((p) => p.name)).toEqual(['Exhibit open till 9', 'Started 20 min ago']);
+  });
+
   it('boosts tonight’s real show and says when it starts', async () => {
     const soon = new Date(NOON.getTime() + 40 * 60_000).toISOString();
     const show = livePlace({ name: 'Lunchtime Jazz', startsAt: soon, times: ['afternoon'], minutes: 60, price: 'free', priceNote: 'Free' });

@@ -75,6 +75,7 @@ export function profileFor(db: Db, u: User): TasteProfile {
     doneIds: done,
     wantIds: new Set(u.wantIds),
     budget: u.lastPrice,
+    persona: u.persona,
   };
 }
 

@@ -8,7 +8,7 @@ import { useAuth } from '../lib/auth';
 import type { Group } from '../lib/types';
 
 export default function Profile() {
-  const { me, refresh, signOut } = useAuth();
+  const { me, meta, refresh, signOut } = useAuth();
   const navigate = useNavigate();
   const [groups, setGroups] = useState<Group[]>([]);
 
@@ -28,7 +28,13 @@ export default function Profile() {
         <Avatar user={user} size={72} />
         <div>
           <h1 className="title title--sm">{user.fullName}</h1>
-          <p className="muted small">@{user.username}</p>
+          <p className="muted small">
+            @{user.username}
+            {' · '}
+            <Link to="/onboarding?edit=1&step=who" className="persona-tag">
+              {meta?.personas.find((p) => p.id === user.persona)?.label ?? 'Add who you are'}
+            </Link>
+          </p>
         </div>
       </header>
 

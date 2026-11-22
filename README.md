@@ -8,7 +8,7 @@ Boston is America's college city: 35+ campuses, a quarter-million students, and 
 
 **common** kills the decision paralysis and the bubble at the same time:
 
-1. **Four quick stops:** where, what (event / activity / food), budget, and when. You get **two** options, A or B. That's the whole decision. Not feeling either? Tell it one thing ("Japanese", "cheaper") and get two more. Picks include **real events happening today**, pulled live from public Boston calendars (universities, Downtown Boston, Massachusetts 250, SoWa), plus Ticketmaster and Google's event listings if you add keys.
+1. **Tell it who you are** (student, local, visiting, new in town), then **four quick stops:** where, what (event / activity / food), budget, and when (a start time in 30-minute steps and how long you have). You get **two** options, A or B. That's the whole decision. Not feeling either? Tell it one thing ("Japanese", "cheaper") and get two more. Picks include **real events happening today**, pulled live from public Boston calendars (universities, Downtown Boston, Massachusetts 250, SoWa), plus Ticketmaster and Google's event listings if you add keys.
 2. **"Find me a crew."** When you take a pick, you're matched with other Bostonians headed to the same spot.
 3. **Stay on with the crew.** Clicked with them? Keep the group for the rest of the day. The crew gets its own **group profile**, and picks only include things that work for *every* rider's tastes and budget.
 
@@ -45,7 +45,7 @@ Open **http://localhost:5173** and tap **Try it as a guest**. No sign-up needed.
 - **Live events work out of the box** from seven public calendars (MIT, Northeastern, BU, Boston College, Downtown Boston, Massachusetts 250, SoWa). For concerts, sports, comedy and Google's listings, add free API keys: copy `backend/.env.example` to `backend/.env` and fill it in (see [Live events](#live-events-whats-on-today)).
 
 ```bash
-npm test            # 40 backend tests: algorithm, live-event parsing, end-to-end API flow
+npm test            # 46 backend tests: algorithm, live-event parsing, end-to-end API flow
 npm run typecheck   # both apps
 npm run build       # production build of the web app
 npm start           # one server on :3001 serving the API + built web app
@@ -53,8 +53,8 @@ npm start           # one server on :3001 serving the API + built web app
 
 ## 2-minute demo script
 
-1. **Try it as a guest** → pick a few interests (Chinese, Dessert, Live music…) → Continue.
-2. **Where to?** Chinatown · Food · $10–$20 · Evening · 1–2 hrs · **Find me a crew**. Watch the route line fill in with the Orange Line color as you answer. → *Show me two*
+1. **Try it as a guest** → **Student** → pick a few interests (Chinese, Dessert, Live music…) → Continue.
+2. **Where to?** Chinatown · Food · $10–$20 · a start time · 1.5 hrs · **Find me a crew**. Watch the route line fill in with the Orange Line color as you answer. → *Show me two*
 3. **A or B.** Point out the "why" line ("You're into Chinese · Right in Chinatown"): the algorithm explains itself.
 4. **Neither. Show me two more** → tap "Japanese" → it finds hot pot and flags it as *a little over budget* instead of ignoring you.
 5. **Take A** → station sign, map, address, nearest T, local tip, and **your crew** (3 Bostonians from different schools) → **Crew chat**.
@@ -102,7 +102,7 @@ On top of the 106 curated spots, common pulls **today's real events** (in Boston
 Google has no official events API, so Google's listings come through SerpApi. Put keys in `backend/.env` (gitignored); never commit them.
 
 **How it stays trustworthy** (`backend/src/live/`):
-- **Today only, in Boston time,** whatever timezone the server is in. Events that already ended (or shows that started 45+ min ago) drop out.
+- **Today only, in Boston time,** whatever timezone the server is in. Anything that started more than 30 minutes ago drops out (drop-in exhibits stay while there's time left to see them), and listings without a start time are never suggested.
 - **Only things in our 12 neighborhoods.** Each listing is placed by its real coordinates, then ZIP code, then address text. Away games ("Location: Norton, MA") and anything farther out (Gillette) are skipped.
 - **Only fun things.** Seminars, info sessions, career events, rehearsals, away games, Zoom/virtual events and thesis defenses are filtered out of the university feeds.
 - **Real details:** time range, cost, the nearest T stop computed from the venue (*"Kendall/MIT · 1 min walk"*), and links to the event page and tickets/registration. Campus events carry a note to check they're open to the public.
@@ -124,7 +124,13 @@ If your network uses an HTTPS proxy, start the server with `NODE_USE_ENV_PROXY=1
 - **Location**: same neighborhood > adjacent (a quick T hop) > elsewhere.
 - Out-of-season things (Swan Boats in November) are never suggested.
 
-**Constraint relaxation:** if the exact filters can't produce two options, it loosens one step at a time and **labels what it stretched**: exact → time-of-day / slightly longer → anywhere in the city → one tier over budget → repeats.
+**Location comes first.** Picks are always in your neighborhood. Only if it can't find two there does it use a neighborhood right next door, and it never goes farther. If nothing fits, you get one pick, or an honest "nothing fits" with a nudge to change the time, rather than something across town.
+
+**Events are real events.** "Event" only ever means a dated listing from a live source that starts within your window (or up to 30 minutes before it), never a venue that might have something on. Food and activities come from the curated places (plus live exhibits and workshops that are open during your window).
+
+**Who you are matters a little.** Students get a nudge toward campus events and free/cheap picks; locals away from tourist traps and toward locally owned spots; visitors and newcomers toward the Boston classics.
+
+**Constraint relaxation:** if the exact filters can't produce two options, it loosens one step at a time and **labels what it stretched**: exact → next-door neighborhood → (places only) outside their usual hours or a bit longer than your time → one tier over budget → repeats.
 
 **Diversity:** B is the best option that *differs* from A (neighborhood or vibe) when it's close in score, so it's a real choice.
 

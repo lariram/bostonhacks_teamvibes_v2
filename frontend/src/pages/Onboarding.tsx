@@ -6,7 +6,8 @@ import { LineDot } from '../components/Transit';
 import { TYPE_LINE } from '../config';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
-import type { PlaceType, Preferences, SelfUser } from '../lib/types';
+import type { Persona, PlaceType, Preferences, SelfUser } from '../lib/types';
+import { ArrowIcon } from '../components/Icons';
 
 const SECTIONS: { key: PlaceType; title: string }[] = [
   { key: 'food', title: 'Food' },
@@ -24,6 +25,50 @@ export default function Onboarding() {
   const [busy, setBusy] = useState(false);
   const max = meta?.maxPrefsPerCategory ?? 3;
   const done = () => navigate(editing ? '/profile' : '/discover', { replace: true });
+  // Step 1 is "who are you?" (skipped if you've answered, unless you came to change it)
+  const [step, setStep] = useState<'who' | 'interests'>(
+    params.get('step') === 'who' || (!editing && !me?.user.persona) ? 'who' : 'interests',
+  );
+
+  async function choosePersona(persona: Persona) {
+    const { user } = await api<{ user: SelfUser }>('/me', { method: 'PATCH', body: { persona } });
+    setUser(user);
+    if (editing) done();
+    else setStep('interests');
+  }
+
+  if (step === 'who' && meta) {
+    return (
+      <div className="screen">
+        {editing && <TopBar back="/profile" />}
+        <p className="label">{editing ? 'About you' : 'Step 1 of 2'}</p>
+        <h1 className="title">Who’s riding?</h1>
+        <p className="lede">So we know what to show you first.</p>
+        <ul className="persona-list">
+          {meta.personas.map((p) => (
+            <li key={p.id}>
+              <button
+                type="button"
+                className={`persona${me?.user.persona === p.id ? ' on' : ''}`}
+                onClick={() => choosePersona(p.id)}
+              >
+                <span>
+                  <strong>{p.label}</strong>
+                  <span className="small muted block">{p.hint}</span>
+                </span>
+                <ArrowIcon size={20} />
+              </button>
+            </li>
+          ))}
+        </ul>
+        {!editing && (
+          <button type="button" className="link small muted persona-skip" onClick={() => setStep('interests')}>
+            Skip
+          </button>
+        )}
+      </div>
+    );
+  }
   const total = prefs.food.length + prefs.event.length + prefs.activity.length;
 
   function toggle(cat: PlaceType, tag: string) {
@@ -46,7 +91,7 @@ export default function Onboarding() {
   return (
     <div className="screen with-footer">
       {editing && <TopBar back="/profile" />}
-      <p className="label">{editing ? 'Your interests' : 'Step 1 of 1'}</p>
+      <p className="label">{editing ? 'Your interests' : 'Step 2 of 2'}</p>
       <h1 className="title">What are you into?</h1>
       <p className="lede">Pick up to {max} of each. We use these to choose for you, and to find people who like the same things.</p>
       {meta &&

@@ -78,3 +78,33 @@ export function liveRange(live: LiveInfo): string {
   const [s, sm] = [start.replace(/ (AM|PM)$/, ''), start.slice(-2)];
   return sm === end.slice(-2) ? `${s} – ${end}` : `${start} – ${end}`;
 }
+
+/** 30 → "30 min", 90 → "1.5 hrs" */
+export function durationLabel(min: number): string {
+  if (min < 60) return `${min} min`;
+  const h = min / 60;
+  return `${Number.isInteger(h) ? h : h.toFixed(1)} hr${h === 1 ? '' : 's'}`;
+}
+
+const localClock = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' });
+export const clock = (d: Date) => localClock.format(d);
+
+/** Start times for the rest of today in 30-minute steps: the next :00/:30 through 11:30 PM */
+export function startSlots(now = new Date()): Date[] {
+  const first = new Date(now);
+  first.setSeconds(0, 0);
+  first.setMinutes(first.getMinutes() < 30 ? 30 : 60);
+  const last = new Date(now);
+  last.setHours(23, 30, 0, 0);
+  const out: Date[] = [];
+  for (let t = first; t <= last; t = new Date(t.getTime() + 30 * 60_000)) out.push(t);
+  return out;
+}
+
+/** "7:30 – 9:30 PM" */
+export function windowLabel(start: Date, minutes: number): string {
+  const end = new Date(start.getTime() + minutes * 60_000);
+  const a = clock(start);
+  const b = clock(end);
+  return a.slice(-2) === b.slice(-2) ? `${a.slice(0, -3)} – ${b}` : `${a} – ${b}`;
+}

@@ -8,6 +8,9 @@ export type DurationId = 'quick' | 'short' | 'half' | 'day';
 
 export type TimeOfDay = 'morning' | 'afternoon' | 'evening' | 'late';
 
+/** Who's using the app: shapes what we suggest */
+export type Persona = 'student' | 'local' | 'visitor' | 'newcomer';
+
 export type NeighborhoodId =
   | 'downtown'
   | 'theater'
@@ -68,6 +71,8 @@ export interface LiveInfo {
   endEstimated?: boolean;
   /** The listing has a date but no time */
   timeTBA?: boolean;
+  /** Drop-in hours (an exhibit open 10–5), not a show with a start time */
+  openHours?: boolean;
   venue?: string;
   /** University calendar: may be campus-only */
   campus?: boolean;
@@ -102,6 +107,7 @@ export interface User {
   isDemo?: boolean;
   /** One-tap demo account (no email/password) */
   isGuest?: boolean;
+  persona?: Persona;
   avatarColor: string;
   createdAt: string;
 }
@@ -110,7 +116,12 @@ export interface RecRequest {
   location: NeighborhoodId | 'anywhere';
   type: PlaceType;
   price: PriceTier;
-  duration: DurationId;
+  /** Legacy duration bucket; durationMinutes wins when both are set */
+  duration?: DurationId;
+  /** How long you have, in minutes (30-minute steps in the app) */
+  durationMinutes?: number;
+  /** When you're starting (ISO). Defaults to now. */
+  startAt?: string;
   timeOfDay?: TimeOfDay;
   groupMode?: boolean;
   groupId?: string;
