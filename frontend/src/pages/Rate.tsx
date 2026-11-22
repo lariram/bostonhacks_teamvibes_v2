@@ -14,7 +14,7 @@ export default function Rate() {
   const [plan, setPlan] = useState<Plan | null>(null);
   const [rating, setRating] = useState(0);
   const [review, setReview] = useState('');
-  const [post, setPost] = useState(true);
+  const [share, setShare] = useState<'now' | 'later' | 'private'>('now');
   const [caption, setCaption] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +32,7 @@ export default function Rate() {
     setError(null);
     try {
       await api(`/plans/${id}/complete`, {
-        body: { rating, review: review.trim() || undefined, postToFeed: post, caption: caption.trim() || undefined },
+        body: { rating, review: review.trim() || undefined, shareMode: share, caption: share === 'now' ? caption.trim() || undefined : undefined },
       });
       navigate(`/plan/${id}/next`, { replace: true });
     } catch (e) {
@@ -58,17 +58,28 @@ export default function Rate() {
         <textarea className="input textarea" rows={3} placeholder="What stood out? Would you go back?" value={review} onChange={(e) => setReview(e.target.value)} />
       </label>
 
-      <div className={`toggle-row${post ? ' on' : ''}`}>
-        <label className="switch">
-          <input type="checkbox" checked={post} onChange={(e) => setPost(e.target.checked)} />
-          <span className="switch__track" />
-          <span>
-            <strong>Post to the feed</strong>
-            <span className="small muted block">Shares the spot and your stars, not your notes.</span>
-          </span>
-        </label>
-        {post && <input className="input" placeholder="Caption (optional)" maxLength={280} value={caption} onChange={(e) => setCaption(e.target.value)} />}
-      </div>
+      <section className="share-choice">
+        <h2 className="label">Share it?</h2>
+        <div className="share-choice__options" role="radiogroup" aria-label="Share it?">
+          {(
+            [
+              ['now', 'Post now', 'This stop and your stars go on the feed.'],
+              ['later', 'Add to my day post', 'Saved for one post of your whole day, when you\'re done.'],
+              ['private', 'Keep private', 'Only you see it, on My line.'],
+            ] as const
+          ).map(([id, title, hint]) => (
+            <button key={id} type="button" role="radio" aria-checked={share === id} className={`share-choice__opt${share === id ? ' on' : ''}`} onClick={() => setShare(id)}>
+              <span className="share-choice__dot" aria-hidden />
+              <span>
+                <strong>{title}</strong>
+                <span className="small muted block">{hint}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+        {share === 'now' && <input className="input" placeholder="Caption (optional)" maxLength={280} value={caption} onChange={(e) => setCaption(e.target.value)} />}
+        <p className="tiny muted">Your private notes are never shared.</p>
+      </section>
 
       {error && <p className="error">{error}</p>}
       <footer className="footer-bar">

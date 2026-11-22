@@ -254,5 +254,6 @@ export interface MyDay {
   date: string;
   stops: (DayStop & { planId: string; group: { id: string; name: string } | null })[];
   sharedPostId: string | null;
+  savedForLater: number;
   caption: string;
 }

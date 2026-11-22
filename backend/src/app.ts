@@ -19,6 +19,7 @@ import type { LiveEvents } from './live/liveEvents.js';
 import type { Images } from './images.js';
 import { Db, newId } from './db.js';
 import { generateAgenda } from './agenda.js';
+import { seedDemoAccount } from './demoAccount.js';
 import { buildIcs, type IcsEvent } from './ics.js';
 import { recommend } from './recommender.js';
 import { nearestStation, tStopBingo } from './live/stations.js';
@@ -149,9 +150,7 @@ export function createApp(db: Db, opts: AppOptions = {}) {
   );
 
   // One tap, no form: for demos and judges. Guest accounts can't log back in after logging out.
-  app.post(
-    '/api/auth/guest',
-    h(() => {
+  const newGuest = () => {
       const tag = newId('g').slice(-6);
       const user: User = {
         id: newId('usr'),
@@ -168,6 +167,23 @@ export function createApp(db: Db, opts: AppOptions = {}) {
         createdAt: now().toISOString(),
       };
       db.data.users.push(user);
+      return user;
+  };
+  app.post(
+    '/api/auth/guest',
+    h(() => {
+      const user = newGuest();
+      return { token: createSession(db, user.id), user: selfUser(user) };
+    }),
+  );
+
+  // Guest with two weeks of history already filled in: for showing the app to judges
+  app.post(
+    '/api/auth/demo',
+    h(() => {
+      const user = newGuest();
+      seedDemoAccount(db, user, placeOf, now());
+      db.save();
       return { token: createSession(db, user.id), user: selfUser(user) };
     }),
   );
@@ -394,7 +410,10 @@ export function createApp(db: Db, opts: AppOptions = {}) {
       plan.completedAt = now().toISOString();
       if (!wasCompleted) learnFromRating(req.user, place, rating);
 
-      if (req.body?.postToFeed && !plan.postId) {
+      // share now, save it for the end-of-day post, or keep it to yourself
+      const mode = req.body?.shareMode ?? (req.body?.postToFeed ? 'now' : 'private');
+      plan.shareLater = mode === 'later' && !plan.postId ? true : undefined;
+      if (mode === 'now' && !plan.postId) {
         const post = {
           id: newId('post'),
           userId: req.user.id,
@@ -669,6 +688,7 @@ export function createApp(db: Db, opts: AppOptions = {}) {
           group: (({ id, name }) => (id ? { id, name } : null))(db.data.groups.find((g) => g.id === plan.groupId) ?? { id: '', name: '' }),
         })),
         sharedPostId: post?.id ?? null,
+        savedForLater: dayStops(req.user.id, date).filter(({ plan }) => plan.shareLater).length,
         caption: post?.caption ?? '',
       };
     }),
@@ -689,6 +709,7 @@ export function createApp(db: Db, opts: AppOptions = {}) {
       };
       const rated = day.stops.filter((s) => s.rating);
       const rating = rated.length ? Math.round(rated.reduce((a, s) => a + s.rating, 0) / rated.length) : 0;
+      for (const { plan } of stops) plan.shareLater = undefined;
       let post = dayPost(req.user.id, date);
       if (post) Object.assign(post, { day, caption, placeId: day.stops[0].placeId, rating, groupId: groupIds.length === 1 ? groupIds[0] : undefined });
       else {

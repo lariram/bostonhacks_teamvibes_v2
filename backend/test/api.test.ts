@@ -232,3 +232,41 @@ describe('share your day', () => {
     expect(res.status).toBe(400);
   });
 });
+
+describe('demo account', () => {
+  it('logs in with history, a group, a shared day and bingo already filled in', async () => {
+    const res = await request(app).post('/api/auth/demo');
+    expect(res.status).toBe(200);
+    const authed = (r: request.Test) => r.set('Authorization', `Bearer ${res.body.token}`);
+    const me = await authed(request(app).get('/api/me'));
+    expect(me.body.user.fullName).toBe('Alex Rivera');
+    expect(me.body.user.persona).toBe('student');
+    expect(me.body.stats.completed).toBeGreaterThanOrEqual(15);
+    expect(me.body.bingo.filter((b: any) => b.visited).length).toBeGreaterThanOrEqual(6);
+    expect(me.body.tStops.visited).toBeGreaterThanOrEqual(8);
+    const history = await authed(request(app).get('/api/history'));
+    expect(history.body.some((p: any) => p.status === 'active')).toBe(true);
+    const groups = await authed(request(app).get('/api/groups'));
+    expect(groups.body[0].status).toBe('active');
+    const feed = await authed(request(app).get('/api/feed'));
+    expect(feed.body.some((p: any) => p.mine && p.day)).toBe(true);
+    // today's stops are waiting for the end-of-day post
+    const day = await authed(request(app).get('/api/day'));
+    expect(day.body.savedForLater).toBe(2);
+  });
+});
+
+describe('save for the end-of-day post', () => {
+  it('keeps a stop off the feed until the day is shared', async () => {
+    const token = (await request(app).post('/api/auth/guest')).body.token as string;
+    const authed = (r: request.Test) => r.set('Authorization', `Bearer ${token}`);
+    const plan = await authed(request(app).post('/api/plans')).send({ placeId: 'regina' });
+    await authed(request(app).post(`/api/plans/${plan.body.id}/complete`)).send({ rating: 5, shareMode: 'later' });
+    const feed = await authed(request(app).get('/api/feed'));
+    expect(feed.body.filter((p: any) => p.mine)).toHaveLength(0);
+    const { bostonParts } = await import('../src/live/time.js');
+    const date = bostonParts(new Date(plan.body.startsAt)).date;
+    const day = await authed(request(app).get(`/api/day?date=${date}`));
+    expect(day.body.savedForLater).toBe(1);
+  });
+});

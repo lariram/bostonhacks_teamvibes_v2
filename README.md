@@ -96,6 +96,10 @@ Follow people from your groups, from the feed, or from their profile. The feed o
 
 **Share your day.** Once you have finished two or more stops in a day, the "Next stop?" screen and My line offer **Share your day**: every stop in order (times, neighborhoods, your stars, never your private reviews) as one post drawn as a line, with a caption. Sharing again updates the same post. API: `GET /api/day`, `POST /api/day/share`.
 
+**Share later.** When you rate a stop you choose **Post now**, **Add to my day post** (saved for one end-of-day post of the whole day), or **Keep private**. "Next stop?" shows how many stops are saved and offers **Post your day**.
+
+**Demo account.** On the start screen, **See a demo account** logs in as "Alex Rivera": 17 stops over two weeks, 8 of 12 neighborhoods on the bingo map, a group ("Museum Saturdays"), feed posts including a shared day, people followed, saved spots, two stops today saved for the day post, and one coming up. It skips onboarding. Code: `backend/src/demoAccount.ts`, `POST /api/auth/demo`.
+
 **Plan it for me.** "Can't decide at all?" on Discover builds a random solo **day** (about five stops, 10:30 AM to evening) or **week of evenings** (two stops on weeknights, three on weekends). Each stop is a short walk from the last (about 1.3 km, widening only if nothing fits), open when you arrive, within budget, never repeated, and weighted toward your tastes. **Stay put** keeps it in one neighborhood; **Wander** may drift into an adjacent one, and a week picks up each day where the last one ended. Shuffle, or add every stop to My line. Code: `backend/src/agenda.ts`, `POST /api/agenda`.
 
 ## Photos

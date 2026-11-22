@@ -12,12 +12,13 @@ export default function Start() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function guest() {
+  async function guest(demo = false) {
     setBusy(true);
     setError(null);
     try {
-      const { token } = await api<{ token: string }>('/auth/guest', { method: 'POST' });
-      await signIn(token, '/onboarding');
+      const { token } = await api<{ token: string }>(demo ? '/auth/demo' : '/auth/guest', { method: 'POST' });
+      // the demo account is already set up, so skip onboarding
+      await signIn(token, demo ? '/profile' : '/onboarding');
     } catch (e) {
       setError((e as Error).message);
       setBusy(false);
@@ -32,8 +33,11 @@ export default function Start() {
         <p className="start__tagline">{TAGLINE}</p>
       </div>
       <div className="start__actions">
-        <button type="button" className="btn btn--light btn--lg btn--block" onClick={guest} disabled={busy}>
+        <button type="button" className="btn btn--light btn--lg btn--block" onClick={() => guest()} disabled={busy}>
           {busy ? 'Boarding…' : 'Try it as a guest'} <ArrowIcon size={20} />
+        </button>
+        <button type="button" className="btn btn--outline-light btn--lg btn--block" onClick={() => guest(true)} disabled={busy}>
+          See a demo account
         </button>
         <Link to="/signup" className="btn btn--outline-light btn--lg btn--block">
           Create account

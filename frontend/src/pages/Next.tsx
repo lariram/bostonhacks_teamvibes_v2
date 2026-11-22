@@ -81,12 +81,20 @@ export default function Next() {
         </section>
       )}
 
-      {day && day.stops.length >= 2 && (
+      {day && (day.stops.length >= 2 || day.savedForLater > 0) && (
         <section className="next__share">
           <p className="label">Done for the day?</p>
-          <Link to={`/day/share?date=${day.date}`} className="btn btn--ghost btn--block">
-            {day.sharedPostId ? 'Update your shared day' : `Share your day · ${day.stops.length} stops`}
-          </Link>
+          {day.stops.length >= 2 ? (
+            <Link to={`/day/share?date=${day.date}`} className={`btn btn--block ${day.savedForLater ? 'btn--primary' : 'btn--ghost'}`}>
+              {day.sharedPostId ? 'Update your shared day' : `Post your day · ${day.stops.length} stops`}
+            </Link>
+          ) : null}
+          {day.savedForLater > 0 && !day.sharedPostId && (
+            <p className="small muted">
+              {day.savedForLater} {day.savedForLater === 1 ? 'stop is' : 'stops are'} saved for your day post.
+              {day.stops.length < 2 && ' Finish one more stop to post your day.'}
+            </p>
+          )}
         </section>
       )}
 

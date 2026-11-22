@@ -196,6 +196,8 @@ export interface Plan {
   /** Private review — only visible to the author */
   review?: string;
   postId?: string;
+  /** Saved to post with the rest of the day, instead of on its own */
+  shareLater?: boolean;
   createdAt: string;
   completedAt?: string;
 }
