@@ -46,7 +46,7 @@ export default function Feed() {
                 <span className="muted post__time">{timeAgo(p.createdAt)}</span>
               </p>
               <div className="post__place">
-                <TypeTag type={p.place.type}>{meta?.neighborhoods.find((n) => n.id === p.place.neighborhood)?.label}</TypeTag>
+                <TypeTag type={p.place.type}>{meta?.neighborhoods.find((n) => n.id === p.place.neighborhood)?.label ?? p.place.live?.area ?? 'Greater Boston'}</TypeTag>
                 <strong className="post__name">{p.place.name}</strong>
                 <Stars value={p.rating} size={13} />
               </div>

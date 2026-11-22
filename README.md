@@ -8,7 +8,7 @@ Boston is America's college city: 35+ campuses, a quarter-million students, and 
 
 **common** kills the decision paralysis and the bubble at the same time:
 
-1. **Tell it who you are** (student, local, visiting, new in town), then **four quick stops:** where, what (event / activity / food), budget, and when (a start time in 30-minute steps and how long you have). You get **two** options, A or B. That's the whole decision. Not feeling either? Tell it one thing ("Japanese", "cheaper") and get two more. Picks include **real events happening today**, pulled live from public Boston calendars (universities, Downtown Boston, Massachusetts 250, SoWa), plus Ticketmaster and Google's event listings if you add keys.
+1. **Tell it who you are** (student, local, visiting, new in town), then **four quick stops:** where, what (event / activity / food), budget, and when (today or any day in the next two weeks, a start time in 30-minute steps, and how long you have). You get **two** options, A or B. That's the whole decision. Not feeling either? Tell it one thing ("Japanese", "cheaper") and get two more. Picks include **real events happening today**, pulled live from public Boston calendars (universities, Downtown Boston, Massachusetts 250, SoWa), plus Ticketmaster and Google's event listings if you add keys.
 2. **"Find me a crew."** When you take a pick, you're matched with other Bostonians headed to the same spot.
 3. **Stay on with the crew.** Clicked with them? Keep the group for the rest of the day. The crew gets its own **group profile**, and picks only include things that work for *every* rider's tastes and budget.
 
@@ -45,7 +45,7 @@ Open **http://localhost:5173** and tap **Try it as a guest**. No sign-up needed.
 - **Live events work out of the box** from seven public calendars (MIT, Northeastern, BU, Boston College, Downtown Boston, Massachusetts 250, SoWa). For concerts, sports, comedy and Google's listings, add free API keys: copy `backend/.env.example` to `backend/.env` and fill it in (see [Live events](#live-events-whats-on-today)).
 
 ```bash
-npm test            # 46 backend tests: algorithm, live-event parsing, end-to-end API flow
+npm test            # 51 backend tests: algorithm, live-event parsing, end-to-end API flow
 npm run typecheck   # both apps
 npm run build       # production build of the web app
 npm start           # one server on :3001 serving the API + built web app
@@ -90,7 +90,7 @@ The minimalism is on purpose: the app exists to remove decisions, so every scree
 
 ## Live events: what's on today
 
-On top of the 106 curated spots, common pulls **today's real events** (in Boston time) and mixes them into the picks. A real show tonight gets a boost and says so: *"Starts in 40 min"*, *"Only on today"*.
+On top of the 106 curated spots, common pulls **real events for the next two weeks** (in Boston time) and mixes them into the picks, so you can plan tonight or next Thursday. A real show tonight gets a boost and says so: *"Starts in 40 min"*, *"Only on today"*.
 
 | Source | What it adds | Setup |
 | --- | --- | --- |
@@ -114,6 +114,13 @@ Google has no official events API, so Google's listings come through SerpApi. Pu
 
 If your network uses an HTTPS proxy, start the server with `NODE_USE_ENV_PROXY=1` so Node's `fetch` uses it.
 
+## My line + calendars
+
+My line shows your plans as a line (**Coming up** and **Been there**) or as a **month calendar** with a dot per plan. Every plan has a real time: a live event's own start, or the time you picked.
+
+- **Add one plan:** on a plan's page, *Google Calendar* opens a pre-filled event; *Apple / Outlook (.ics)* downloads a calendar file.
+- **Sync everything:** *Get my calendar link* on My line gives you a private feed. *Subscribe in Apple Calendar* adds it, and new plans show up automatically. For Google Calendar, paste it into *Settings → Add calendar → From URL*. Calendar apps can only reach the feed while the app runs somewhere they can see: your own computer for Apple Calendar, a public server for Google.
+
 ## How the recommendation algorithm works
 
 `backend/src/recommender.ts` is pure functions, fully unit-tested.
@@ -124,7 +131,7 @@ If your network uses an HTTPS proxy, start the server with `NODE_USE_ENV_PROXY=1
 - **Location**: same neighborhood > adjacent (a quick T hop) > elsewhere.
 - Out-of-season things (Swan Boats in November) are never suggested.
 
-**Location comes first.** Picks are always in your neighborhood. Only if it can't find two there does it use a neighborhood right next door, and it never goes farther. If nothing fits, you get one pick, or an honest "nothing fits" with a nudge to change the time, rather than something across town.
+**Location comes first.** Picks are always in your neighborhood. Only if it can't find two there does it use a neighborhood right next door, and it never goes farther. If nothing fits, you get one pick, or an honest "nothing fits" with a nudge to change the time, rather than something across town. **Optional wider search:** turn on *"Nothing here? Look anywhere on the T"* and, only when there isn't enough nearby, it also looks anywhere reachable by subway, Green Line or Silver Line (no Commuter Rail): all 12 neighborhoods plus T towns like Malden, Quincy, Brookline and Revere. Those picks say where they are and how far.
 
 **Events are real events.** "Event" only ever means a dated listing from a live source that starts within your window (or up to 30 minutes before it), never a venue that might have something on. Food and activities come from the curated places (plus live exhibits and workshops that are open during your window).
 
@@ -170,7 +177,9 @@ frontend/                React + Vite + TypeScript (mobile-first)
 | POST | `/api/recommendations` | `{location,type,price,duration,timeOfDay?,groupMode?,groupId?,excludeIds?,feedback?}` → 2 picks |
 | POST | `/api/plans` | take a pick (forms a crew if `groupMode`) |
 | POST | `/api/plans/:id/complete` | rating, private notes, optional feed post |
-| GET | `/api/live` | today's live-event count and each source's status |
+| GET | `/api/live` | live-event counts (today + next two weeks) and each source's status |
+| GET | `/api/plans/:id/calendar.ics` | one plan as a calendar file (Apple Calendar, Outlook) |
+| GET | `/api/me/calendar` → `/api/calendar/<token>.ics` | private feed of everything on My line, for calendar subscriptions |
 | GET | `/api/history`, `/api/feed` | |
 | POST | `/api/feed/:id/react` | `like` / `want` (both shape recommendations) |
 | GET/POST | `/api/groups/:id`, `/keep`, `/messages`, `/join-current`, `/leave` | crew profile + chat |

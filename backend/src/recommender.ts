@@ -1,6 +1,7 @@
 import { CLASSICS, DURATION_MINUTES, NEIGHBORHOOD_BY_ID, PRICE_TIERS, priceRank, TOURIST_TRAPS } from './data/meta.js';
 import { bostonParts, bostonWallTime, formatBostonTime, timeOfDayAt } from './live/time.js';
-import type { Persona, Place, PriceTier, RecRequest, Suggestion, TimeOfDay } from './types.js';
+import { distanceKm, neighborhoodCenter } from './live/geo.js';
+import type { NeighborhoodId, Persona, Place, PriceTier, RecRequest, Suggestion, TimeOfDay } from './types.js';
 
 /**
  * A person's taste, as the recommender sees it. A solo request has one member;
@@ -42,6 +43,8 @@ export interface RecResult {
   exhausted: boolean;
   /** Effective budget cap after applying group budgets / "cheaper" feedback */
   budget: PriceTier;
+  /** Some picks came from the optional anywhere-on-the-T search */
+  widened?: boolean;
 }
 
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
@@ -83,6 +86,7 @@ interface Candidate {
   stage: number;
   score: number;
   stretchNote?: string;
+  widened?: boolean;
 }
 
 /**
@@ -112,9 +116,9 @@ export function requestWindow(req: RecRequest, now: Date): { start: Date; end: D
 
 export function recommend(req: RecRequest, ctx: RecContext): RecResult {
   const now = ctx.now ?? new Date();
-  const month = now.getMonth() + 1;
   const random = ctx.random ?? Math.random;
   const win = requestWindow(req, now);
+  const month = Number(bostonParts(win.start).date.slice(5, 7)); // season of the day you're planning for
   const budget = effectiveBudget(req, ctx.members);
   const budgetRank = priceRank(budget);
   const exclude = new Set(req.excludeIds ?? []);
@@ -124,22 +128,25 @@ export function recommend(req: RecRequest, ctx: RecContext): RecResult {
   const near = req.location === 'anywhere' ? [] : NEIGHBORHOOD_BY_ID[req.location]?.near ?? [];
   const me = ctx.members.find((m) => m.id === ctx.selfId) ?? ctx.members[0];
 
+  const eligible = (place: Place) =>
+    place.type === req.type &&
+    // "Event" means a real, dated event, never a venue that might have something on
+    (req.type !== 'event' || !!place.live) &&
+    // Never recommend something that's out of season
+    (!place.months || place.months.includes(month));
+
   const pool: Candidate[] = [];
   for (const place of ctx.places) {
-    if (place.type !== req.type) continue;
-    // "Event" means a real, dated event, never a venue that might have something on
-    if (req.type === 'event' && !place.live) continue;
-    // Never recommend something that's out of season
-    if (place.months && !place.months.includes(month)) continue;
-
+    if (!eligible(place)) continue;
     const stage = stageFor(place);
     if (stage === null) continue;
     pool.push({ place, stage: stage.stage, stretchNote: stage.note, score: scoreFor(place, stage.stage) });
   }
 
-  function stageFor(place: Place): { stage: number; note?: string } | null {
-    // Location: your neighborhood, or right next door. Never across town.
-    const sameHood = anywhere || place.neighborhood === req.location;
+  function stageFor(place: Place, anyLocation = false): { stage: number; note?: string } | null {
+    // Location: your neighborhood, or right next door. Never across town (unless you opted
+    // into the wider search, which is a separate pass below).
+    const sameHood = anyLocation || (anywhere ? place.neighborhood !== 'greater' : place.neighborhood === req.location);
     if (!sameHood && !near.includes(place.neighborhood)) return null;
     let stage = sameHood ? 0 : 1;
     const notes: string[] = [];
@@ -151,7 +158,19 @@ export function recommend(req: RecRequest, ctx: RecContext): RecResult {
       const s = Date.parse(live.startsAt);
       const e = live.endsAt ? Date.parse(live.endsAt) : s + place.minutes * MIN;
       if (live.openHours) {
-        if (s > win.end.getTime() || e < win.start.getTime() + 30 * MIN) return null; // need 30+ min inside
+        let openS = s;
+        let openE = e;
+        if (bostonParts(new Date(s)).date !== bostonParts(new Date(e)).date) {
+          // A multi-day run: use its daily hours on the day you're going
+          const day = bostonParts(win.start).date;
+          const a = bostonParts(new Date(s));
+          const b = bostonParts(new Date(e));
+          let [sh, sm, eh, em] = [a.hour, a.minute, b.hour, b.minute];
+          if (eh * 60 + em <= sh * 60 + sm) [sh, sm, eh, em] = [10, 0, 17, 0];
+          openS = Math.max(s, bostonWallTime(day, sh, sm).getTime());
+          openE = Math.min(e, bostonWallTime(day, eh, em).getTime());
+        }
+        if (openS > win.end.getTime() || openE < win.start.getTime() + 30 * MIN) return null; // need 30+ min inside
       } else {
         if (s < now.getTime() - 30 * MIN) return null; // started too long ago
         if (s < win.start.getTime() - 30 * MIN || s > win.end.getTime()) return null; // not in your window
@@ -187,7 +206,7 @@ export function recommend(req: RecRequest, ctx: RecContext): RecResult {
 
   function scoreFor(place: Place, stage: number): number {
     const interest = groupInterest(place, ctx.members);
-    const loc = anywhere ? 0.7 : place.neighborhood === req.location ? 1 : req.feedback?.closer ? 0.25 : 0.45;
+    const loc = anywhere ? 0.7 : place.neighborhood === req.location ? 1 : near.includes(place.neighborhood) ? (req.feedback?.closer ? 0.25 : 0.45) : 0.2;
     const priceFit = clamp(1 - 0.12 * Math.abs(budgetRank - priceRank(place.price)), 0, 1);
     const durFit = 1 - Math.min(1, Math.abs(place.minutes - win.minutes) / win.minutes) * 0.5;
 
@@ -210,15 +229,42 @@ export function recommend(req: RecRequest, ctx: RecContext): RecResult {
 
   // Use the strictest stage that still yields two options
   let usable: Candidate[] = [];
-  let usedStage = 0;
   for (let stage = 0; stage <= MAX_STAGE; stage++) {
     usable = pool.filter((c) => c.stage <= stage);
-    usedStage = stage;
     if (usable.length >= 2) break;
   }
   usable.sort((a, b) => b.score - a.score);
 
   let picks = pickDiverse(usable);
+
+  // Optional wider search: if there's not enough nearby, look anywhere you can reach on the
+  // T (subway, light rail, Silver Line; no Commuter Rail). Closer is better, and it's labeled.
+  let widened = false;
+  if (req.widen && !anywhere && picks.length < 2) {
+    const center = neighborhoodCenter(req.location as NeighborhoodId);
+    const taken = new Set(pool.map((c) => c.place.id));
+    const wider: Candidate[] = [];
+    for (const place of ctx.places) {
+      if (taken.has(place.id) || !eligible(place)) continue;
+      const st = stageFor(place, true);
+      if (st === null || st.stage >= 4) continue;
+      const km = distanceKm(center, [place.lat, place.lng]);
+      const where = place.neighborhood === 'greater' ? place.live?.area ?? 'Greater Boston' : NEIGHBORHOOD_BY_ID[place.neighborhood].label;
+      wider.push({
+        place,
+        stage: st.stage,
+        widened: true,
+        stretchNote: [`Outside ${NEIGHBORHOOD_BY_ID[req.location as NeighborhoodId].label}: ${where}, ~${km.toFixed(1)} km`, st.note]
+          .filter(Boolean)
+          .join(' · '),
+        score: scoreFor(place, st.stage) - km * 0.04,
+      });
+    }
+    wider.sort((a, b) => b.score - a.score);
+    const extra = wider.slice(0, 2 - picks.length);
+    widened = extra.length > 0;
+    picks = [...picks, ...extra];
+  }
   // If they told us what they want ("more Japanese") and nothing in budget fits,
   // surface the closest match anyway, clearly labeled, instead of ignoring them.
   if (moreTags.size && !picks.some((c) => c.place.tags.some((t) => moreTags.has(t)))) {
@@ -233,9 +279,11 @@ export function recommend(req: RecRequest, ctx: RecContext): RecResult {
       score: Math.round(c.score * 100) / 100,
       reasons: buildReasons(c.place, req, ctx, budget, now),
       stretchNote: c.stretchNote,
+      widened: c.widened || undefined,
       communityRating: ctx.communityRatings?.[c.place.id],
     })),
-    exhausted: usedStage >= 4 && picks.length > 0,
+    exhausted: picks.some((c) => c.stage >= 4), // only when we're actually repeating something
+    widened,
     budget,
   };
 }
@@ -273,8 +321,11 @@ function buildReasons(place: Place, req: RecRequest, ctx: RecContext, budget: Pr
   const moreTags = new Set(req.feedback?.moreTags ?? []);
 
   if (place.live) {
-    const mins = Math.round((Date.parse(place.live.startsAt) - now.getTime()) / 60_000);
-    if (place.live.timeTBA) reasons.push('Only on today');
+    const startMs = Date.parse(place.live.startsAt);
+    const mins = Math.round((startMs - now.getTime()) / 60_000);
+    const onToday = bostonParts(new Date(Math.max(startMs, now.getTime()))).date === bostonParts(now).date;
+    if (place.live.openHours) reasons.push(mins <= 0 && onToday ? 'Open now' : 'Limited run');
+    else if (!onToday) reasons.push('One-time event');
     else if (mins <= 0) reasons.push('Happening now');
     else if (mins <= 90) reasons.push(`Starts in ${mins} min`);
     else reasons.push('Only on today');
@@ -316,7 +367,9 @@ function buildReasons(place: Place, req: RecRequest, ctx: RecContext, budget: Pr
   if (me?.persona === 'local' && place.tags.includes('Locally owned') && !TOURIST_TRAPS.has(place.id)) reasons.push("A locals' pick");
   if ((me?.persona === 'visitor' || me?.persona === 'newcomer') && CLASSICS.has(place.id)) reasons.push('A Boston classic');
 
-  if (req.location === 'anywhere') {
+  if (place.neighborhood === 'greater') {
+    reasons.push(`${place.live?.area ?? 'Greater Boston'}, on the T`);
+  } else if (req.location === 'anywhere') {
     reasons.push(NEIGHBORHOOD_BY_ID[place.neighborhood].label);
   } else if (place.neighborhood === req.location) {
     reasons.push(`Right in ${NEIGHBORHOOD_BY_ID[place.neighborhood].label}`);

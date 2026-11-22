@@ -64,9 +64,26 @@ export function bostonTime(iso: string): string {
   return bostonClock.format(new Date(iso)).replace(':00', '');
 }
 
-/** "Today · 7:30 PM" */
+const bostonDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' });
+const bostonDay = (d: Date) => bostonDate.format(d);
+const dayFmt = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'short', month: 'short', day: 'numeric' });
+
+/** "Today", "Tomorrow", or "Sat, Dec 5" (Boston time) */
+export function dayName(d: Date, now = new Date()): string {
+  const day = bostonDay(d);
+  if (day === bostonDay(now)) return 'Today';
+  if (day === bostonDay(new Date(now.getTime() + 24 * 60 * 60 * 1000))) return 'Tomorrow';
+  return dayFmt.format(d);
+}
+
+/** "Today · 7:30 PM", "Tomorrow · 8 PM", "Open now · until 5 PM" */
 export function liveWhen(live: LiveInfo): string {
-  return live.timeTBA ? 'Today · time TBA' : `Today · ${bostonTime(live.startsAt)}`;
+  const start = new Date(live.startsAt);
+  if (live.openHours) {
+    const open = start.getTime() <= Date.now();
+    return open ? `Open now${live.endsAt && !live.endEstimated ? ` · until ${bostonTime(live.endsAt)}` : ''}` : `${dayName(start)} · from ${bostonTime(live.startsAt)}`;
+  }
+  return live.timeTBA ? `${dayName(start)} · time TBA` : `${dayName(start)} · ${bostonTime(live.startsAt)}`;
 }
 
 /** "7:30 – 10 PM" when we know the real end, otherwise just the start */
@@ -89,12 +106,24 @@ export function durationLabel(min: number): string {
 const localClock = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' });
 export const clock = (d: Date) => localClock.format(d);
 
-/** Start times for the rest of today in 30-minute steps: the next :00/:30 through 11:30 PM */
-export function startSlots(now = new Date()): Date[] {
-  const first = new Date(now);
+/** The next `count` days, starting today (local midnight) */
+export function upcomingDays(count: number, now = new Date()): Date[] {
+  const base = new Date(now);
+  base.setHours(0, 0, 0, 0);
+  return Array.from({ length: count }, (_, i) => new Date(base.getFullYear(), base.getMonth(), base.getDate() + i));
+}
+
+/**
+ * Start times in 30-minute steps for a given day: from the next half hour if
+ * it's today, otherwise 8:00 AM, through 11:30 PM.
+ */
+export function startSlots(day: Date = new Date(), now = new Date()): Date[] {
+  const isToday = day.toDateString() === now.toDateString();
+  const first = new Date(isToday ? now : day);
   first.setSeconds(0, 0);
-  first.setMinutes(first.getMinutes() < 30 ? 30 : 60);
-  const last = new Date(now);
+  if (isToday) first.setMinutes(first.getMinutes() < 30 ? 30 : 60);
+  else first.setHours(8, 0, 0, 0);
+  const last = new Date(day);
   last.setHours(23, 30, 0, 0);
   const out: Date[] = [];
   for (let t = first; t <= last; t = new Date(t.getTime() + 30 * 60_000)) out.push(t);
@@ -107,4 +136,17 @@ export function windowLabel(start: Date, minutes: number): string {
   const a = clock(start);
   const b = clock(end);
   return a.slice(-2) === b.slice(-2) ? `${a.slice(0, -3)} – ${b}` : `${a} – ${b}`;
+}
+
+/** "Add to Google Calendar" link (no sign-in or API key needed) */
+export function googleCalendarUrl(e: { title: string; start: Date; end: Date; location?: string; details?: string }): string {
+  const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  const p = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: e.title,
+    dates: `${fmt(e.start)}/${fmt(e.end)}`,
+    details: e.details ?? '',
+    location: e.location ?? '',
+  });
+  return `https://calendar.google.com/calendar/render?${p}`;
 }

@@ -43,7 +43,70 @@ const STATIONS: [string, number, number][] = [
   ['Aquarium (Blue)', 42.3598, -71.0517],
   ['Courthouse (Silver)', 42.3527, -71.0465],
   ['World Trade Center (Silver)', 42.3486, -71.0425],
+  // ── beyond our 12 neighborhoods: subway, light rail and Silver Line (no Commuter Rail) ──
+  ['Alewife (Red)', 42.3954, -71.1425],
+  ['Broadway (Red)', 42.3426, -71.0569],
+  ['Andrew (Red)', 42.3302, -71.057],
+  ['JFK/UMass (Red)', 42.3207, -71.0524],
+  ['Savin Hill (Red)', 42.3112, -71.0533],
+  ['Fields Corner (Red)', 42.3, -71.0617],
+  ['Ashmont (Red)', 42.2846, -71.0638],
+  ['North Quincy (Red)', 42.2753, -71.03],
+  ['Wollaston (Red)', 42.2665, -71.0203],
+  ['Quincy Center (Red)', 42.2518, -71.0054],
+  ['Quincy Adams (Red)', 42.2334, -71.0072],
+  ['Braintree (Red)', 42.2079, -71.0012],
+  ['Mattapan (Red/Mattapan Trolley)', 42.2677, -71.0924],
+  ['Oak Grove (Orange)', 42.4367, -71.0711],
+  ['Malden Center (Orange)', 42.4266, -71.0741],
+  ['Wellington (Orange)', 42.4024, -71.077],
+  ['Assembly (Orange)', 42.3925, -71.077],
+  ['Sullivan Square (Orange)', 42.384, -71.077],
+  ['Roxbury Crossing (Orange)', 42.3315, -71.0955],
+  ['Jackson Square (Orange)', 42.3231, -71.0996],
+  ['Stony Brook (Orange)', 42.3171, -71.1043],
+  ['Green Street (Orange)', 42.3105, -71.1074],
+  ['Forest Hills (Orange)', 42.3005, -71.1137],
+  ['Bowdoin (Blue)', 42.3614, -71.062],
+  ['Maverick (Blue)', 42.3691, -71.0395],
+  ['Airport (Blue)', 42.3743, -71.0303],
+  ['Wood Island (Blue)', 42.3796, -71.0229],
+  ['Orient Heights (Blue)', 42.3869, -71.0047],
+  ['Suffolk Downs (Blue)', 42.3906, -70.9971],
+  ['Beachmont (Blue)', 42.3975, -70.9923],
+  ['Revere Beach (Blue)', 42.4078, -70.9925],
+  ['Wonderland (Blue)', 42.4135, -70.9916],
+  ['Science Park/West End (Green)', 42.3664, -71.0677],
+  ['East Somerville (Green)', 42.3796, -71.0868],
+  ['Gilman Square (Green)', 42.3878, -71.096],
+  ['Magoun Square (Green)', 42.3936, -71.1061],
+  ['Ball Square (Green)', 42.3996, -71.111],
+  ['Medford/Tufts (Green)', 42.4073, -71.117],
+  ["Saint Mary's Street (Green C)", 42.3457, -71.1075],
+  ['Coolidge Corner (Green C)', 42.342, -71.1211],
+  ['Longwood (Green D)', 42.3415, -71.11],
+  ['Brookline Village (Green D)', 42.3328, -71.1166],
+  ['Brookline Hills (Green D)', 42.3313, -71.1267],
+  ['Reservoir (Green D)', 42.335, -71.149],
+  ['Chestnut Hill (Green D)', 42.3263, -71.1647],
+  ['Newton Centre (Green D)', 42.3294, -71.1925],
+  ['Newton Highlands (Green D)', 42.3223, -71.2056],
+  ['Riverside (Green D)', 42.3373, -71.2526],
+  ['Brigham Circle (Green E)', 42.3343, -71.1048],
+  ['Heath Street (Green E)', 42.3288, -71.111],
+  ['Nubian (Silver)', 42.3292, -71.0838],
+  ['Chelsea (Silver)', 42.397, -71.041],
 ];
+
+/** Within ~12 minutes' walk of a subway, light rail or Silver Line station? */
+export function transitStation(lat: number, lng: number, maxKm = 1): { name: string; km: number } | null {
+  let best: { name: string; km: number } | null = null;
+  for (const [name, sLat, sLng] of STATIONS) {
+    const km = distanceKm([lat, lng], [sLat, sLng]);
+    if (km <= maxKm && (!best || km < best.km)) best = { name, km };
+  }
+  return best;
+}
 
 /** "Kendall/MIT (Red) · 6 min walk", or null if nothing's within ~15 minutes on foot */
 export function nearestStop(lat: number, lng: number): string | null {

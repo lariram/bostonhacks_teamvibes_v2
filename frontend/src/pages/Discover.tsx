@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { AvatarStack } from '../components/Avatar';
 import { Chip } from '../components/Chip';
@@ -8,7 +8,7 @@ import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { useRecSession } from '../lib/session';
 import type { Group, LiveStatus, PlaceType, PriceTier, RecRequest } from '../lib/types';
-import { clock, durationLabel, startSlots, windowLabel } from '../lib/util';
+import { clock, dayName, durationLabel, startSlots, upcomingDays, windowLabel } from '../lib/util';
 
 /** 'now' or an ISO start time */
 type When = 'now' | string;
@@ -45,7 +45,29 @@ export default function Discover() {
   const [price, setPrice] = useState<PriceTier | null>(last?.price ?? me?.user.lastPrice ?? null);
   const [duration, setDuration] = useState<number | null>(last?.durationMinutes ?? null);
   const [when, setWhen] = useState<When>('now');
-  const slots = useMemo(() => startSlots(), []);
+  const days = useMemo(() => upcomingDays(14), []);
+  const [dayIdx, setDayIdx] = useState(0);
+  const slots = useMemo(() => startSlots(days[dayIdx]), [days, dayIdx]);
+  const pickDay = (i: number) => {
+    setDayIdx(i);
+    // "Now" only makes sense today; other days start at a real time (default 7 PM, or the first slot)
+    if (i === 0) setWhen('now');
+    else {
+      const all = startSlots(days[i]);
+      setWhen((all.find((t) => t.getHours() === 19) ?? all[0]).toISOString());
+    }
+  };
+  const [widen, setWiden] = useState<boolean>(last?.widen ?? false);
+
+  // Keep the chosen day and time visible in their swipeable rows
+  const dayRow = useRef<HTMLDivElement>(null);
+  const timeRow = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    for (const row of [dayRow.current, timeRow.current]) {
+      const chip = row?.querySelector<HTMLElement>('.chip--on');
+      if (row && chip) row.scrollTo({ left: chip.offsetLeft - row.clientWidth / 2 + chip.clientWidth / 2, behavior: 'smooth' });
+    }
+  }, [when, dayIdx]);
   const [groupMode, setGroupMode] = useState<boolean>(last?.groupMode ?? false);
 
   // How many real events are on today (shown as a live indicator)
@@ -80,6 +102,7 @@ export default function Discover() {
       durationMinutes: duration,
       startAt: when === 'now' ? new Date().toISOString() : when,
       groupMode: group ? false : groupMode,
+      widen: location !== 'anywhere' && widen,
       groupId: group?.id,
     };
     if (await session.generate(req)) navigate('/discover/results');
@@ -114,7 +137,15 @@ export default function Discover() {
         <p className="live-banner">
           <span className="live-dot" aria-hidden />
           <span>
-            <strong>{live.total}</strong> {live.total === 1 ? 'event' : 'events'} on in Boston today
+            {live.today ? (
+              <>
+                <strong>{live.today}</strong> {live.today === 1 ? 'event' : 'events'} on today · {live.total} in the next two weeks
+              </>
+            ) : (
+              <>
+                <strong>{live.total}</strong> events in the next two weeks
+              </>
+            )}
           </span>
           <span className="live-banner__src muted">From {joinNames(live.sources.filter((x) => x.count > 0).map((x) => x.name))}</span>
         </p>
@@ -130,6 +161,16 @@ export default function Discover() {
           <Chip selected={location === 'anywhere'} onClick={() => setLocation('anywhere')}>
             Surprise me
           </Chip>
+          {location !== 'anywhere' && (
+            <label className="switch widen">
+              <input type="checkbox" checked={widen} onChange={(e) => setWiden(e.target.checked)} />
+              <span className="switch__track" />
+              <span className="small">
+                <strong>Nothing here? Look anywhere on the T.</strong>
+                <span className="muted block">Subway, Green Line, Silver Line. No Commuter Rail. Off by default.</span>
+              </span>
+            </label>
+          )}
         </Stop>
 
         <Stop label="What" value={label(meta.types, type)} done={!!type}>
@@ -160,14 +201,28 @@ export default function Discover() {
 
         <Stop
           label="When"
-          value={duration ? windowLabel(when === 'now' ? new Date() : new Date(when), duration) : undefined}
+          value={
+            duration
+              ? `${dayName(when === 'now' ? new Date() : new Date(when))} · ${windowLabel(when === 'now' ? new Date() : new Date(when), duration)}`
+              : undefined
+          }
           done={!!duration}
         >
+          <p className="hint full">Day</p>
+          <div className="time-scroller" role="radiogroup" aria-label="Day" ref={dayRow}>
+            {days.map((d, i) => (
+              <Chip key={d.toDateString()} selected={dayIdx === i} onClick={() => pickDay(i)}>
+                {i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+              </Chip>
+            ))}
+          </div>
           <p className="hint full">Starting</p>
-          <div className="time-scroller" role="radiogroup" aria-label="Start time">
-            <Chip selected={when === 'now'} onClick={() => setWhen('now')}>
-              Now
-            </Chip>
+          <div className="time-scroller" role="radiogroup" aria-label="Start time" ref={timeRow}>
+            {dayIdx === 0 && (
+              <Chip selected={when === 'now'} onClick={() => setWhen('now')}>
+                Now
+              </Chip>
+            )}
             {slots.map((t) => (
               <Chip key={t.toISOString()} selected={when === t.toISOString()} onClick={() => setWhen(t.toISOString())}>
                 {clock(t)}

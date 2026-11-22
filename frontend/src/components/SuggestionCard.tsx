@@ -23,7 +23,10 @@ interface Props {
 export function SuggestionCard({ suggestion, letter, onChoose, busy }: Props) {
   const { meta } = useAuth();
   const { place, reasons, stretchNote, communityRating } = suggestion;
-  const hood = meta?.neighborhoods.find((n) => n.id === place.neighborhood)?.label ?? place.neighborhood;
+  const hood =
+    place.neighborhood === 'greater'
+      ? place.live?.area ?? 'Greater Boston'
+      : meta?.neighborhoods.find((n) => n.id === place.neighborhood)?.label ?? place.neighborhood;
   const price = meta?.priceTiers.find((t) => t.id === place.price)?.label ?? place.price;
   const stopLines = linesFromStop(place.tStop);
 

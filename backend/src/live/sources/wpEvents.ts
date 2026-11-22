@@ -1,5 +1,5 @@
 import type { NeighborhoodId, Place, PlaceType, PriceTier } from '../../types.js';
-import { APPROX_T_STOP, neighborhoodCenter, neighborhoodForAddress, neighborhoodForPoint } from '../geo.js';
+import { APPROX_T_STOP, inRange, neighborhoodCenter, neighborhoodForAddress, placeForPoint } from '../geo.js';
 import { nearestStop } from '../stations.js';
 import { cleanText, decodeHtml, emojiFor, priceTierFor, tagsFor } from '../tags.js';
 import { bostonParts, bostonWallTime, timesForRange } from '../time.js';
@@ -33,6 +33,8 @@ interface WpEvent {
   all_day?: boolean;
   is_virtual?: boolean;
   hide_from_listings?: boolean;
+  start_date?: string;
+  end_date?: string;
   utc_start_date?: string;
   utc_end_date?: string;
   cost?: string;
@@ -42,7 +44,7 @@ interface WpEvent {
   venue?: { venue?: string; address?: string; city?: string; zip?: string; geo_lat?: number | string; geo_lng?: number | string } | unknown[];
 }
 
-const MAX_PAGES = 3;
+const MAX_PAGES = 6;
 
 export function wpEventsSource(site: WpEventsSite): LiveSource {
   return {
@@ -51,7 +53,7 @@ export function wpEventsSource(site: WpEventsSite): LiveSource {
     refreshMs: 3 * 60 * 60 * 1000,
     async fetch(ctx) {
       let url: string | undefined =
-        `https://${site.domain}/wp-json/tribe/events/v1/events?start_date=${ctx.today}&end_date=${ctx.today}%2023:59:59&per_page=50`;
+        `https://${site.domain}/wp-json/tribe/events/v1/events?start_date=${ctx.today}&end_date=${ctx.endDate}%2023:59:59&per_page=50`;
       const out: Place[] = [];
       for (let page = 0; url && page < MAX_PAGES; page++) {
         const json = (await ctx.getJson(url)) as { events?: WpEvent[]; next_rest_url?: string };
@@ -64,9 +66,17 @@ export function wpEventsSource(site: WpEventsSite): LiveSource {
   };
 }
 
-const utc = (s?: string) => (s ? new Date(`${s.replace(' ', 'T')}Z`) : undefined);
+/**
+ * Local wall time ("2026-11-24 10:00:00") read as Boston time. We don't trust the
+ * "utc_" fields: some sites have their WordPress timezone set to UTC by mistake,
+ * which shifts everything five hours. Every site we read is in Boston.
+ */
+function boston(local?: string): Date | undefined {
+  const m = local?.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}):(\d{2})/);
+  return m ? bostonWallTime(m[1], Number(m[2]), Number(m[3])) : undefined;
+}
 
-export function normalizeWpEvents(json: unknown, site: WpEventsSite, ctx: Pick<SourceContext, 'today' | 'now'>): Place[] {
+export function normalizeWpEvents(json: unknown, site: WpEventsSite, ctx: Pick<SourceContext, 'today' | 'endDate' | 'now'>): Place[] {
   const events: WpEvent[] = (json as { events?: WpEvent[] })?.events ?? [];
   const out: Place[] = [];
 
@@ -85,7 +95,7 @@ export function normalizeWpEvents(json: unknown, site: WpEventsSite, ctx: Pick<S
     let hood: NeighborhoodId | null = null;
     if (v.geo_lat && Number.isFinite(lat) && Number.isFinite(lng)) {
       point = [lat, lng];
-      hood = neighborhoodForPoint(lat, lng);
+      hood = placeForPoint(lat, lng);
     } else if (known) {
       point = [known.lat, known.lng];
       hood = known.neighborhood;
@@ -94,28 +104,27 @@ export function normalizeWpEvents(json: unknown, site: WpEventsSite, ctx: Pick<S
     }
     if (!hood) continue; // outside our neighborhoods (the statewide calendars list a lot)
 
-    // When (the API gives UTC alongside local)
-    let start = utc(e.utc_start_date);
-    let end = utc(e.utc_end_date);
+    // When
+    let start = boston(e.start_date) ?? undefined;
+    let end = boston(e.end_date);
     if (!start || Number.isNaN(start.getTime())) continue;
-    const dayStart = bostonWallTime(ctx.today, 0);
-    const dayEnd = bostonWallTime(ctx.today, 23, 59);
-    if (start > dayEnd || (end && end < dayStart)) continue;
+    const rangeStart = bostonWallTime(ctx.today, 0);
+    const rangeEnd = bostonWallTime(ctx.endDate, 23, 59);
+    if (start > rangeEnd || (end && end < rangeStart)) continue;
+    const startDay = bostonParts(start).date;
     let endEstimated = false;
+    // Drop-in hours: all-day listings, exhibits, and multi-day runs (an exhibit that
+    // opened last week and closes in January). Multi-day runs keep their real span;
+    // the recommender applies the daily hours.
     let openHours = !!e.all_day || (e.categories ?? []).some((c) => /exhibit/i.test(c.name));
     if (e.all_day) {
-      start = bostonWallTime(ctx.today, 10);
-      end = bostonWallTime(ctx.today, 17);
+      start = bostonWallTime(startDay, 10);
+      end = bostonWallTime(end ? bostonParts(end).date : startDay, 17);
       endEstimated = true;
-    } else if (bostonParts(start).date !== ctx.today) {
-      // a multi-day run (an exhibit that opened last week): treat as open today
+    } else if (end && bostonParts(end).date !== startDay) {
       openHours = true;
-      start = bostonWallTime(ctx.today, 10);
-      if (!end || end > dayEnd) {
-        end = bostonWallTime(ctx.today, 17);
-        endEstimated = true;
-      }
     }
+    if (!openHours && !inRange(startDay, ctx)) continue;
     if (!end) {
       end = new Date(start.getTime() + 120 * 60_000);
       endEstimated = true;
@@ -128,7 +137,7 @@ export function normalizeWpEvents(json: unknown, site: WpEventsSite, ctx: Pick<S
     if (cats.some((c) => /history/i.test(c))) tags.add('History');
     if (!tags.size) tags.add('Small events');
 
-    const minutes = Math.round((end.getTime() - start.getTime()) / 60_000);
+    const minutes = openHours ? dailyMinutes(start, end) : Math.round((end.getTime() - start.getTime()) / 60_000);
     const type: PlaceType = minutes >= 240 || cats.some((c) => /exhibit/i.test(c)) ? 'activity' : 'event';
 
     // Price: "Free", "$55", "Free – $18", "Regular museum admission"
@@ -148,7 +157,7 @@ export function normalizeWpEvents(json: unknown, site: WpEventsSite, ctx: Pick<S
 
     const at = point ?? neighborhoodCenter(hood);
     out.push({
-      id: `live-${site.short}-${e.id}-${ctx.today}`,
+      id: `live-${site.short}-${e.id}`,
       name: title,
       type,
       neighborhood: hood,
@@ -175,9 +184,18 @@ export function normalizeWpEvents(json: unknown, site: WpEventsSite, ctx: Pick<S
         openHours,
         venue: v.venue ? decodeHtml(v.venue) : undefined,
         approxLocation: !point,
+        area: hood === 'greater' ? v.city : undefined,
         fetchedAt: ctx.now.toISOString(),
       },
     });
   }
   return out;
+}
+
+/** For drop-in hours: minutes open per day (10:00–17:00 → 420) */
+function dailyMinutes(start: Date, end: Date): number {
+  const a = bostonParts(start);
+  const b = bostonParts(end);
+  const m = b.hour * 60 + b.minute - (a.hour * 60 + a.minute);
+  return m > 0 ? m : 420;
 }

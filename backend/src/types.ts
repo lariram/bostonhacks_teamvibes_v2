@@ -23,7 +23,9 @@ export type NeighborhoodId =
   | 'cambridge'
   | 'somerville'
   | 'allston'
-  | 'brighton';
+  | 'brighton'
+  /** Outside our 12 neighborhoods but reachable on the T (wider search only) */
+  | 'greater';
 
 export interface Place {
   id: string;
@@ -78,6 +80,8 @@ export interface LiveInfo {
   campus?: boolean;
   /** Pin is the neighborhood center, not the exact venue */
   approxLocation?: boolean;
+  /** For Greater Boston listings: the town, e.g. "Malden" */
+  area?: string;
   fetchedAt: string;
 }
 
@@ -108,6 +112,8 @@ export interface User {
   /** One-tap demo account (no email/password) */
   isGuest?: boolean;
   persona?: Persona;
+  /** Secret for the private calendar feed (subscribe in Apple/Google Calendar) */
+  calendarToken?: string;
   avatarColor: string;
   createdAt: string;
 }
@@ -123,6 +129,8 @@ export interface RecRequest {
   /** When you're starting (ISO). Defaults to now. */
   startAt?: string;
   timeOfDay?: TimeOfDay;
+  /** If nothing fits nearby, look anywhere reachable on the T */
+  widen?: boolean;
   groupMode?: boolean;
   groupId?: string;
   excludeIds?: string[];
@@ -144,6 +152,8 @@ export interface Suggestion {
   reasons: string[];
   /** Set when we had to stretch a constraint to find a match */
   stretchNote?: string;
+  /** Found by the wider, anywhere-on-the-T search */
+  widened?: boolean;
   communityRating?: { avg: number; count: number };
 }
 
@@ -156,6 +166,9 @@ export interface Plan {
   request: RecRequest;
   groupId?: string;
   status: PlanStatus;
+  /** When you're going (ISO): the event's time, or the start you picked */
+  startsAt?: string;
+  endsAt?: string;
   rating?: number;
   /** Private review — only visible to the author */
   review?: string;

@@ -59,6 +59,7 @@ export interface LiveInfo {
   venue?: string;
   campus?: boolean;
   approxLocation?: boolean;
+  area?: string;
   fetchedAt: string;
 }
 
@@ -66,6 +67,7 @@ export interface LiveStatus {
   enabled: boolean;
   date: string | null;
   total: number;
+  today?: number;
   sources: { id: string; name: string; ok: boolean | null; count: number; error?: string }[];
   upcoming?: { id: string; name: string; startsAt: string; source: string }[];
 }
@@ -122,6 +124,8 @@ export interface RecRequest {
   /** When you're starting (ISO); omitted = now */
   startAt?: string;
   timeOfDay?: TimeOfDay;
+  /** If nothing fits nearby, look anywhere reachable on the T */
+  widen?: boolean;
   groupMode?: boolean;
   groupId?: string;
   excludeIds?: string[];
@@ -133,12 +137,14 @@ export interface Suggestion {
   score: number;
   reasons: string[];
   stretchNote?: string;
+  widened?: boolean;
   communityRating?: { avg: number; count: number };
 }
 
 export interface RecResult {
   suggestions: Suggestion[];
   exhausted: boolean;
+  widened?: boolean;
   budget: PriceTier;
 }
 
@@ -163,6 +169,8 @@ export interface Plan {
   request: RecRequest;
   groupId?: string;
   status: 'active' | 'completed';
+  startsAt?: string;
+  endsAt?: string;
   rating?: number;
   review?: string;
   postId?: string;

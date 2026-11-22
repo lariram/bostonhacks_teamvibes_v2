@@ -4,7 +4,8 @@ import { KNOWN_LOCALIST, localistSource } from './sources/localist.js';
 import { ticketmasterSource } from './sources/ticketmaster.js';
 import { KNOWN_WP_EVENTS, wpEventsSource } from './sources/wpEvents.js';
 import type { LiveSource, SourceContext } from './sources/types.js';
-import { bostonDay, bostonParts } from './time.js';
+import { PLAN_AHEAD_DAYS } from '../data/meta.js';
+import { bostonDay, bostonParts, bostonWallTime } from './time.js';
 
 interface SourceState {
   date: string;
@@ -16,7 +17,10 @@ interface SourceState {
 
 export interface LiveStatus {
   date: string;
+  /** Upcoming across the whole plan-ahead range */
   total: number;
+  /** Still on today */
+  today: number;
   sources: { id: string; name: string; ok: boolean | null; count: number; error?: string; fetchedAt?: string }[];
 }
 
@@ -39,7 +43,7 @@ export class LiveEvents {
 
   constructor(
     readonly sources: LiveSource[],
-    private opts: { getJson?: (url: string) => Promise<unknown>; now?: () => Date; timeoutMs?: number; quiet?: boolean } = {},
+    private opts: { getJson?: (url: string) => Promise<unknown>; now?: () => Date; timeoutMs?: number; quiet?: boolean; days?: number } = {},
   ) {}
 
   private now() {
@@ -60,19 +64,23 @@ export class LiveEvents {
     if (!due.length) return Promise.resolve();
 
     const day = bostonDay(now);
+    const days = this.opts.days ?? PLAN_AHEAD_DAYS;
+    const endDate = bostonParts(new Date(day.start.getTime() + (days - 1) * 24 * 60 * 60 * 1000 + 12 * 60 * 60 * 1000)).date;
     const ctx: SourceContext = {
       today: day.date,
+      endDate,
+      days,
       dayStart: day.start,
-      dayEnd: day.end,
+      dayEnd: new Date(bostonWallTime(endDate, 23, 59).getTime() + 60_000),
       now,
-      getJson: this.opts.getJson ?? defaultGetJson(this.opts.timeoutMs ?? 10_000),
+      getJson: this.opts.getJson ?? defaultGetJson(this.opts.timeoutMs ?? 20_000),
     };
     this.inflight = Promise.all(
       due.map(async (src) => {
         try {
           const events = await src.fetch(ctx);
           this.state.set(src.id, { date: day.date, fetchedAt: now.getTime(), ok: true, events });
-          if (!this.opts.quiet) console.log(`[live] ${src.name}: ${events.length} events today`);
+          if (!this.opts.quiet) console.log(`[live] ${src.name}: ${events.length} events in the next ${days} days`);
         } catch (err) {
           const prev = this.state.get(src.id);
           this.state.set(src.id, {
@@ -98,12 +106,10 @@ export class LiveEvents {
     this.refresh().catch(() => undefined);
   }
 
-  /** Events still worth going to right now, de-duplicated across sources */
+  /** Everything still worth going to, from now through the plan-ahead range, de-duplicated */
   events(now = this.now()): Place[] {
-    const today = bostonParts(now).date;
     const t = now.getTime();
     const upcoming = [...this.state.values()]
-      .filter((s) => s.date === today)
       .flatMap((s) => s.events)
       .filter((p) => {
         const live = p.live!;
@@ -134,9 +140,12 @@ export class LiveEvents {
   }
 
   status(now = this.now()): LiveStatus {
+    const all = this.events(now);
+    const today = bostonParts(now).date;
     return {
-      date: bostonParts(now).date,
-      total: this.events(now).length,
+      date: today,
+      total: all.length,
+      today: all.filter((p) => bostonParts(new Date(Math.max(Date.parse(p.live!.startsAt), now.getTime()))).date === today).length,
       sources: this.sources.map((s) => {
         const st = this.state.get(s.id);
         return {

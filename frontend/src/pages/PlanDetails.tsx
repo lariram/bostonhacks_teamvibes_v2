@@ -6,10 +6,10 @@ import { Stars } from '../components/Stars';
 import { TopBar } from '../components/TopBar';
 import { LineDot, LineDots, StationSign } from '../components/Transit';
 import { crewLine, LINES, linesFromStop, TYPE_COLORS, TYPE_LINE } from '../config';
-import { api } from '../lib/api';
+import { api, downloadFile } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import type { Plan } from '../lib/types';
-import { formatMinutes, liveRange, liveWhen, mapsSearchUrl, osmEmbedUrl, TIME_LABEL, timeAgo, transitDirectionsUrl } from '../lib/util';
+import { bostonTime, dayName, formatMinutes, googleCalendarUrl, liveRange, liveWhen, mapsSearchUrl, osmEmbedUrl, TIME_LABEL, timeAgo, transitDirectionsUrl } from '../lib/util';
 
 const updatedAgo = (iso: string) => {
   const t = timeAgo(iso);
@@ -94,9 +94,9 @@ export default function PlanDetails() {
         <div>
           <dt className="label">Time</dt>
           <dd>
-            {place.live ? (
+            {place.live && !place.live.openHours ? (
               <>
-                Today, {liveRange(place.live)}
+                {dayName(new Date(place.live.startsAt))}, {liveRange(place.live)}
                 {place.live.endEstimated && !place.live.timeTBA && <span className="muted"> · about {formatMinutes(place.minutes)}</span>}
               </>
             ) : (
@@ -132,6 +132,37 @@ export default function PlanDetails() {
         <span className="label">{place.live ? 'Good to know' : 'Local tip'}</span>
         <p>{place.localTip}</p>
       </div>
+
+      {plan.startsAt && plan.status === 'active' && (
+        <section className="add-cal">
+          <div className="add-cal__head">
+            <span className="label">On your calendar</span>
+            <span className="small muted">
+              {dayName(new Date(plan.startsAt))} · {bostonTime(plan.startsAt)}
+              {plan.endsAt ? `–${bostonTime(plan.endsAt)}` : ''}
+            </span>
+          </div>
+          <div className="add-cal__buttons">
+            <a
+              className="btn btn--ghost btn--sm"
+              target="_blank"
+              rel="noreferrer"
+              href={googleCalendarUrl({
+                title: place.name,
+                start: new Date(plan.startsAt),
+                end: new Date(plan.endsAt ?? plan.startsAt),
+                location: place.address,
+                details: `${place.blurb}\nNearest T: ${place.tStop}${place.live ? `\n${place.live.url}` : ''}\nPlanned with common.`,
+              })}
+            >
+              Google Calendar
+            </a>
+            <button type="button" className="btn btn--ghost btn--sm" onClick={() => downloadFile(`/plans/${plan.id}/calendar.ics`, `${place.name}.ics`)}>
+              Apple / Outlook (.ics)
+            </button>
+          </div>
+        </section>
+      )}
 
       {group && (
         <section className="crew" style={{ '--crew': crewColor } as CSSProperties}>

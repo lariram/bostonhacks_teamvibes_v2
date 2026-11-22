@@ -18,6 +18,7 @@ const ANCHORS: Record<NeighborhoodId, [number, number][]> = {
   somerville: [[42.3967, -71.1223], [42.3796, -71.095], [42.3925, -71.077], [42.387, -71.099]],
   allston: [[42.353, -71.1323], [42.3536, -71.1366], [42.3521, -71.1178], [42.3668, -71.1257], [42.3505, -71.1054]],
   brighton: [[42.3487, -71.1527], [42.338, -71.153], [42.3355, -71.1685]],
+  greater: [], // anything T-reachable outside the 12 (see stations.ts)
 };
 
 export function distanceKm(a: [number, number], b: [number, number]): number {
@@ -78,7 +79,7 @@ export function neighborhoodForAddress(address: string): NeighborhoodId | null {
 
 /** A representative point, for listings that only tell us the neighborhood */
 export function neighborhoodCenter(id: NeighborhoodId): [number, number] {
-  return ANCHORS[id][0];
+  return ANCHORS[id][0] ?? ANCHORS.downtown[0];
 }
 
 /** Closest T stops per neighborhood, for listings without one (approximate) */
@@ -95,4 +96,15 @@ export const APPROX_T_STOP: Record<NeighborhoodId, string> = {
   somerville: 'Davis (Red) or Union Square (Green)',
   allston: 'Harvard Ave or BU (Green B)',
   brighton: 'Boston College (Green B)',
+  greater: 'On the T: see directions',
 };
+
+import { transitStation } from './stations.js';
+
+/** One of our neighborhoods, or "greater" if it's elsewhere but walkable to the T */
+export function placeForPoint(lat: number, lng: number): NeighborhoodId | null {
+  return neighborhoodForPoint(lat, lng) ?? (transitStation(lat, lng) ? 'greater' : null);
+}
+
+/** Is a Boston date (YYYY-MM-DD) inside the fetch range? */
+export const inRange = (date: string, ctx: { today: string; endDate: string }) => date >= ctx.today && date <= ctx.endDate;

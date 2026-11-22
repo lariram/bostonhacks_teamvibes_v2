@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PLACES } from '../src/data/places.js';
-import { NEIGHBORHOOD_BY_ID, PREFERENCE_TAGS, priceRank } from '../src/data/meta.js';
+import { NEIGHBORHOOD_BY_ID, NEIGHBORHOODS, PREFERENCE_TAGS, priceRank } from '../src/data/meta.js';
 import { groupInterest, recommend, type TasteProfile } from '../src/recommender.js';
 import type { RecRequest } from '../src/types.js';
 
@@ -25,7 +25,7 @@ describe('catalog', () => {
   });
 
   it('can produce two food and activity picks for every neighborhood with a generous budget', () => {
-    for (const hood of Object.keys(NEIGHBORHOOD_BY_ID)) {
+    for (const hood of NEIGHBORHOODS.map((n) => n.id)) {
       for (const type of ['food', 'activity'] as const) {
         const r = recommend(
           { location: hood as RecRequest['location'], type, price: '40plus', duration: 'half' },
@@ -47,7 +47,7 @@ describe('recommend', () => {
   });
 
   it('stays in your neighborhood or right next door, never across town', () => {
-    for (const hood of Object.keys(NEIGHBORHOOD_BY_ID) as (keyof typeof NEIGHBORHOOD_BY_ID)[]) {
+    for (const hood of NEIGHBORHOODS.map((n) => n.id)) {
       const allowed = [hood, ...NEIGHBORHOOD_BY_ID[hood].near];
       for (const type of ['food', 'activity'] as const) {
         const r = recommend(

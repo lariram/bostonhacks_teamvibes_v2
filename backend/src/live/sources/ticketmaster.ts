@@ -1,6 +1,6 @@
 import type { Place, PriceTier } from '../../types.js';
 import { nearestStop } from '../stations.js';
-import { APPROX_T_STOP, neighborhoodCenter, neighborhoodForAddress, neighborhoodForPoint } from '../geo.js';
+import { APPROX_T_STOP, inRange, neighborhoodCenter, neighborhoodForAddress, placeForPoint } from '../geo.js';
 import { decodeHtml, cleanText, emojiFor, priceTierFor, tagsFor } from '../tags.js';
 import { bostonParts, bostonWallTime, timesForRange } from '../time.js';
 import type { LiveSource, SourceContext } from './types.js';
@@ -43,23 +43,32 @@ export function ticketmasterSource(apiKey: string): LiveSource {
     name: 'Ticketmaster',
     refreshMs: 2 * 60 * 60 * 1000,
     async fetch(ctx) {
-      const params = new URLSearchParams({
-        apikey: apiKey,
-        latlong: '42.3601,-71.0589',
-        radius: '6',
-        unit: 'miles',
-        startDateTime: iso(ctx.dayStart),
-        endDateTime: iso(ctx.dayEnd),
-        size: '200',
-        sort: 'date,asc',
-        locale: '*',
-      });
-      return normalizeTicketmaster(await ctx.getJson(`https://app.ticketmaster.com/discovery/v2/events.json?${params}`), ctx);
+      const out: Place[] = [];
+      for (let page = 0; page < 5; page++) {
+        const params = new URLSearchParams({
+          apikey: apiKey,
+          latlong: '42.3601,-71.0589',
+          radius: '12', // the T reaches well past the city line
+          unit: 'miles',
+          startDateTime: iso(ctx.dayStart),
+          endDateTime: iso(ctx.dayEnd),
+          size: '200',
+          page: String(page),
+          sort: 'date,asc',
+          locale: '*',
+        });
+        const json = (await ctx.getJson(`https://app.ticketmaster.com/discovery/v2/events.json?${params}`)) as {
+          page?: { totalPages?: number };
+        };
+        out.push(...normalizeTicketmaster(json, ctx));
+        if (!json?.page?.totalPages || page + 1 >= json.page.totalPages) break;
+      }
+      return out;
     },
   };
 }
 
-export function normalizeTicketmaster(json: unknown, ctx: Pick<SourceContext, 'today' | 'now'>): Place[] {
+export function normalizeTicketmaster(json: unknown, ctx: Pick<SourceContext, 'today' | 'endDate' | 'now'>): Place[] {
   const events: TmEvent[] = (json as { _embedded?: { events?: TmEvent[] } })?._embedded?.events ?? [];
   const seen = new Set<string>();
   const out: Place[] = [];
@@ -72,7 +81,7 @@ export function normalizeTicketmaster(json: unknown, ctx: Pick<SourceContext, 't
 
     const lat = Number(v.location?.latitude);
     const lng = Number(v.location?.longitude);
-    const hood = (v.location ? neighborhoodForPoint(lat, lng) : null) ?? (v.postalCode ? neighborhoodForAddress(v.postalCode) : null);
+    const hood = (v.location ? placeForPoint(lat, lng) : null) ?? (v.postalCode ? neighborhoodForAddress(v.postalCode) : null);
     if (!hood) continue;
     const point: [number, number] = Number.isFinite(lat) && v.location ? [lat, lng] : neighborhoodCenter(hood);
 
@@ -85,7 +94,7 @@ export function normalizeTicketmaster(json: unknown, ctx: Pick<SourceContext, 't
       start = bostonWallTime(s.localDate, h, m);
     } else if (s.localDate) start = bostonWallTime(s.localDate, 19);
     else continue;
-    if (Number.isNaN(start.getTime()) || bostonParts(start).date !== ctx.today) continue;
+    if (Number.isNaN(start.getTime()) || !inRange(bostonParts(start).date, ctx)) continue;
 
     // Ticketmaster often lists VIP/parking packages as separate "events"
     const name = decodeHtml(ev.name).replace(/\s*[-–:|]\s*(vip|premium|parking|package|upgrade).*$/i, '').trim();
@@ -142,6 +151,7 @@ export function normalizeTicketmaster(json: unknown, ctx: Pick<SourceContext, 't
         endEstimated: true,
         timeTBA,
         venue: v.name,
+        area: hood === 'greater' ? v.city?.name : undefined,
         fetchedAt: ctx.now.toISOString(),
       },
     });

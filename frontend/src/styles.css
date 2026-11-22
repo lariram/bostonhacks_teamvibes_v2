@@ -273,8 +273,19 @@ ol {
   flex-wrap: wrap;
   gap: 7px;
 }
+/* opt-in wider search */
+.switch.widen {
+  flex-basis: 100%;
+  margin-top: 10px;
+  align-items: flex-start;
+}
+.switch.widen .switch__track {
+  margin-top: 2px;
+}
+
 /* one swipeable line of start times */
 .time-scroller {
+  position: relative; /* so chips' offsetLeft is measured from the row */
   display: flex;
   gap: 7px;
   overflow-x: auto;
@@ -1048,6 +1059,23 @@ ol {
   align-self: stretch;
 }
 
+.add-cal {
+  margin-top: 22px;
+  border-top: 1px solid var(--hair);
+  padding-top: 14px;
+}
+.add-cal__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 10px;
+}
+.add-cal__buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 /* ───────── rate ───────── */
 .rate .title {
   margin-top: 10px;
@@ -1266,6 +1294,104 @@ ol {
 .post__actions .want.on {
   color: var(--ink);
   font-weight: 500;
+}
+
+/* ───────── my line: calendar ───────── */
+.my-line__switch {
+  display: flex;
+  width: fit-content;
+  margin: 2px 0 18px;
+}
+.section-label {
+  display: flex;
+  margin: 18px 0 10px;
+  color: var(--muted);
+}
+.cal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.cal__next svg {
+  transform: scaleX(-1);
+}
+.cal__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.cal__wd {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+  padding: 4px 0;
+}
+.cal__day {
+  aspect-ratio: 1;
+  border: none;
+  background: none;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  font-size: 15px;
+  cursor: pointer;
+}
+.cal__day:hover {
+  background: var(--fill);
+}
+.cal__day.is-other {
+  color: #c2c5c6;
+}
+.cal__day.is-today span:first-child {
+  font-weight: 700;
+  color: var(--red);
+}
+.cal__day.is-selected {
+  background: var(--ink);
+  color: #fff;
+}
+.cal__day.is-selected.is-today span:first-child {
+  color: #fff;
+}
+.cal__dots {
+  display: flex;
+  gap: 2px;
+  height: 5px;
+}
+.cal__dots i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+.cal__list li a {
+  display: flex;
+  gap: 14px;
+  align-items: baseline;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--hair);
+  text-decoration: none;
+  color: inherit;
+  font-weight: 400;
+}
+.cal__time {
+  font-size: 13px;
+  font-weight: 500;
+  min-width: 64px;
+  color: var(--ink-2);
+}
+.sync {
+  margin-top: 28px;
+  border-top: 1px solid var(--hair);
+  padding-top: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
 }
 
 /* ───────── profile ───────── */

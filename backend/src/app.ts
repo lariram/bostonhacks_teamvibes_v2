@@ -17,6 +17,7 @@ import { Catalog } from './catalog.js';
 import { PLACES } from './data/places.js';
 import type { LiveEvents } from './live/liveEvents.js';
 import { Db, newId } from './db.js';
+import { buildIcs, type IcsEvent } from './ics.js';
 import { recommend } from './recommender.js';
 import {
   communityRatings,
@@ -33,7 +34,7 @@ import {
   systemMessage,
   verifyPassword,
 } from './services.js';
-import type { Plan, PlaceType, Preferences, RecRequest, User } from './types.js';
+import type { Place, Plan, PlaceType, Preferences, RecRequest, User } from './types.js';
 
 type AuthedRequest = Request & { user: User };
 
@@ -338,6 +339,7 @@ export function createApp(db: Db, opts: AppOptions = {}) {
         groupId = matchCrew(db, req.user, place!, random).id;
       }
 
+      const when = scheduleFor(place!, request.startAt, request.durationMinutes);
       const plan: Plan = {
         id: newId('plan'),
         userId: req.user.id,
@@ -345,6 +347,8 @@ export function createApp(db: Db, opts: AppOptions = {}) {
         request: { ...request, groupId },
         groupId,
         status: 'active',
+        startsAt: when.start.toISOString(),
+        endsAt: when.end.toISOString(),
         createdAt: now().toISOString(),
       };
       db.data.plans.push(plan);
@@ -398,6 +402,43 @@ export function createApp(db: Db, opts: AppOptions = {}) {
       return planView(plan);
     }),
   );
+
+  // ───────────── calendar ─────────────
+  // One plan as an .ics file (Apple Calendar / Outlook open it directly)
+  app.get('/api/plans/:id/calendar.ics', auth, (req, res, next) => {
+    try {
+      const plan = ownPlan(req as AuthedRequest);
+      res.type('text/calendar').attachment(`common-${plan.id}.ics`).send(buildIcs([icsFor(plan)].filter(Boolean) as IcsEvent[]));
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Your private subscription link for everything on My line
+  app.get(
+    '/api/me/calendar',
+    auth,
+    h((req) => {
+      if (!req.user.calendarToken) {
+        req.user.calendarToken = newId('cal').replace('cal_', '') + newId('x').slice(2);
+        db.save();
+      }
+      return { path: `/api/calendar/${req.user.calendarToken}.ics` };
+    }),
+  );
+
+  // The feed itself: no login (calendar apps can't log in), protected by the secret token
+  app.get('/api/calendar/:file', (req, res) => {
+    const token = req.params.file.replace(/\.ics$/, '');
+    const user = token.length >= 16 ? db.data.users.find((u) => u.calendarToken === token) : undefined;
+    if (!user) return res.status(404).json({ error: 'Calendar not found' });
+    const since = now().getTime() - 60 * 24 * 60 * 60 * 1000;
+    const events = db.data.plans
+      .filter((p) => p.userId === user.id)
+      .map(icsFor)
+      .filter((e): e is IcsEvent => !!e && e.end.getTime() > since);
+    res.type('text/calendar').send(buildIcs(events, `common. · ${user.fullName.split(' ')[0]}'s line`));
+  });
 
   app.get(
     '/api/history',
@@ -584,6 +625,36 @@ export function createApp(db: Db, opts: AppOptions = {}) {
   );
 
   // ───────────── helpers ─────────────
+  /** When a plan happens: a live event's own time, otherwise the start you picked */
+  function scheduleFor(p: Place, startAt?: string, durationMinutes?: number): { start: Date; end: Date } {
+    if (p.live && !p.live.openHours && !p.live.timeTBA) {
+      const start = new Date(p.live.startsAt);
+      return { start, end: p.live.endsAt ? new Date(p.live.endsAt) : new Date(start.getTime() + p.minutes * 60_000) };
+    }
+    const start = startAt && Date.parse(startAt) > now().getTime() - 60 * 60_000 ? new Date(startAt) : now();
+    const minutes = Math.min(p.minutes, durationMinutes ?? p.minutes);
+    return { start, end: new Date(start.getTime() + minutes * 60_000) };
+  }
+
+  function icsFor(plan: Plan): IcsEvent | null {
+    const p = catalog.get(plan.placeId);
+    if (!p) return null;
+    const start = new Date(plan.startsAt ?? plan.createdAt);
+    const end = plan.endsAt ? new Date(plan.endsAt) : new Date(start.getTime() + p.minutes * 60_000);
+    const g = plan.groupId ? db.data.groups.find((x) => x.id === plan.groupId) : undefined;
+    return {
+      uid: `${plan.id}@common.boston`,
+      start,
+      end,
+      summary: `${p.name}${g ? ` with ${g.name}` : ''}`,
+      location: p.address,
+      description: [p.blurb, `Nearest T: ${p.tStop}`, p.live ? `Listing: ${p.live.url}` : '', 'Planned with common.']
+        .filter(Boolean)
+        .join('\n'),
+      url: p.live?.url,
+    };
+  }
+
   function ownPlan(req: AuthedRequest): Plan {
     const plan = db.data.plans.find((p) => p.id === req.params.id && p.userId === req.user.id);
     if (!plan) fail(404, 'Plan not found');
@@ -637,6 +708,7 @@ function parseRecRequest(body: any): RecRequest {
     startAt,
     timeOfDay,
     groupMode: !!b.groupMode,
+    widen: !!b.widen,
     groupId: typeof b.groupId === 'string' && b.groupId ? b.groupId : undefined,
     excludeIds: Array.isArray(b.excludeIds) ? b.excludeIds.map(String).slice(0, 200) : [],
     feedback: {

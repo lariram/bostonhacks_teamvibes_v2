@@ -22,10 +22,16 @@ export const NEIGHBORHOODS: Neighborhood[] = [
   { id: 'fenway', label: 'Fenway', near: ['backbay', 'allston'] },
 ];
 
-export const NEIGHBORHOOD_BY_ID = Object.fromEntries(NEIGHBORHOODS.map((n) => [n.id, n])) as Record<
+/** Not offered as a choice; used for Greater Boston listings in the wider search */
+export const GREATER_BOSTON: Neighborhood = { id: 'greater', label: 'Greater Boston', near: [] };
+
+export const NEIGHBORHOOD_BY_ID = Object.fromEntries([...NEIGHBORHOODS, GREATER_BOSTON].map((n) => [n.id, n])) as Record<
   NeighborhoodId,
   Neighborhood
 >;
+
+/** How far ahead you can plan (and how far ahead live sources are fetched) */
+export const PLAN_AHEAD_DAYS = 14;
 
 export const TYPES: { id: PlaceType; label: string }[] = [
   { id: 'event', label: 'Event' },

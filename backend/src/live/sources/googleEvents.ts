@@ -1,5 +1,5 @@
 import type { Place, PriceTier } from '../../types.js';
-import { APPROX_T_STOP, neighborhoodCenter, neighborhoodForAddress } from '../geo.js';
+import { APPROX_T_STOP, inRange, neighborhoodCenter, neighborhoodForAddress } from '../geo.js';
 import { decodeHtml, cleanText, emojiFor, shortHash, tagsFor } from '../tags.js';
 import { bostonWallTime, timesForRange } from '../time.js';
 import type { LiveSource, SourceContext } from './types.js';
@@ -30,7 +30,7 @@ export function googleEventsSource(apiKey: string, refreshHours = 12): LiveSourc
         q: 'Events in Boston',
         hl: 'en',
         gl: 'us',
-        htichips: 'date:today',
+        htichips: 'date:week', // Google's "this week" filter
         api_key: apiKey,
       });
       return normalizeGoogleEvents(await ctx.getJson(`https://serpapi.com/search.json?${params}`), ctx);
@@ -46,6 +46,20 @@ function to24(h: number, min: number, mer: string): [number, number] {
   if (m === 'pm' && h < 12) h += 12;
   if (m === 'am' && h === 12) h = 0;
   return [h, min];
+}
+
+const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+
+/** Google's "Nov 22" → "2026-11-22" (rolling into next year for January listings in December) */
+export function googleDate(startDate: string | undefined, today: string): string | null {
+  if (!startDate) return today;
+  const m = startDate.match(/([A-Za-z]{3})[a-z]*\.?\s+(\d{1,2})/);
+  if (!m) return null;
+  const month = MONTHS.indexOf(m[1].toLowerCase());
+  if (month < 0) return null;
+  let year = Number(today.slice(0, 4));
+  if (month + 1 < Number(today.slice(5, 7)) - 1) year += 1;
+  return `${year}-${String(month + 1).padStart(2, '0')}-${m[2].padStart(2, '0')}`;
 }
 
 /** "Sat, Nov 22, 7 – 10 PM" → 19:00–22:00 on `today`. Null when there's no time. */
@@ -68,7 +82,7 @@ export function parseWhen(when: string, today: string): { start: Date; end?: Dat
   return { start: bostonWallTime(today, h, m) };
 }
 
-export function normalizeGoogleEvents(json: unknown, ctx: Pick<SourceContext, 'today' | 'now'>): Place[] {
+export function normalizeGoogleEvents(json: unknown, ctx: Pick<SourceContext, 'today' | 'endDate' | 'now'>): Place[] {
   const results: GoogleEvent[] = (json as { events_results?: GoogleEvent[] })?.events_results ?? [];
   const out: Place[] = [];
   for (const r of results) {
@@ -77,8 +91,10 @@ export function normalizeGoogleEvents(json: unknown, ctx: Pick<SourceContext, 't
     if (!hood) continue;
 
     const when = r.date?.when ?? '';
-    const parsed = parseWhen(when, ctx.today);
-    const start = parsed?.start ?? bostonWallTime(ctx.today, 12);
+    const day = googleDate(r.date?.start_date, ctx.today);
+    if (!day || !inRange(day, ctx)) continue;
+    const parsed = parseWhen(when, day);
+    const start = parsed?.start ?? bostonWallTime(day, 12);
     const end = parsed?.end;
     const tags = new Set(tagsFor(`${r.title} ${r.venue?.name ?? ''}`, r.description ?? ''));
     if (!tags.size) tags.add('Small events');

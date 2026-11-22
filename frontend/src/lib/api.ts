@@ -34,3 +34,16 @@ export async function api<T>(path: string, opts: { method?: string; body?: unkno
   }
   return data as T;
 }
+
+/** Download an authenticated file (e.g. an .ics for Apple Calendar) */
+export async function downloadFile(path: string, filename: string) {
+  const token = getToken();
+  const res = await fetch(`/api${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  if (!res.ok) throw new ApiError('Could not download that file', res.status);
+  const url = URL.createObjectURL(await res.blob());
+  const a = Object.assign(document.createElement('a'), { href: url, download: filename });
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}

@@ -4,7 +4,7 @@ import { createApp } from '../src/app.js';
 import { Catalog } from '../src/catalog.js';
 import { PLACES } from '../src/data/places.js';
 import { Db } from '../src/db.js';
-import { neighborhoodForAddress, neighborhoodForPoint } from '../src/live/geo.js';
+import { neighborhoodForAddress, neighborhoodForPoint, placeForPoint } from '../src/live/geo.js';
 import { LiveEvents, liveSourcesFromEnv } from '../src/live/liveEvents.js';
 import { normalizeGoogleEvents, parseWhen } from '../src/live/sources/googleEvents.js';
 import { KNOWN_LOCALIST, normalizeLocalist } from '../src/live/sources/localist.js';
@@ -17,7 +17,7 @@ import type { Place } from '../src/types.js';
 
 const TODAY = '2026-11-22';
 const NOON = new Date('2026-11-22T12:00:00-05:00');
-const ctx = { today: TODAY, now: NOON };
+const ctx = { today: TODAY, endDate: TODAY, now: NOON };
 const MIT = KNOWN_LOCALIST.find((c) => c.domain === 'calendar.mit.edu')!;
 
 describe('Boston time', () => {
@@ -100,6 +100,7 @@ describe('Localist (university calendars)', () => {
   it('skips away games listed as "at"', () => {
     const json = {
       events: [
+        ev({ title: "Men's Basketball at Harvard", location_name: 'Cambridge, MA' }), // no category at all
         ev({
           title: "Women's Hockey at Northeastern",
           location_name: 'Matthews Arena',
@@ -159,8 +160,10 @@ describe('WordPress community calendars', () => {
     url: 'https://www.downtownboston.org/event/thing/',
     status: 'publish',
     all_day: false,
-    utc_start_date: '2026-11-23 00:30:00', // 7:30 PM Boston
-    utc_end_date: '2026-11-23 02:30:00',
+    start_date: '2026-11-22 19:30:00', // local Boston time
+    end_date: '2026-11-22 21:30:00',
+    utc_start_date: '2026-11-22 19:30:00', // a site misconfigured as UTC: must be ignored
+    utc_end_date: '2026-11-22 21:30:00',
     cost: '',
     cost_details: { values: [] },
     categories: [],
@@ -199,8 +202,8 @@ describe('WordPress community calendars', () => {
         events: [
           wp({
             title: 'Patriots of Color Exhibition',
-            utc_start_date: '2026-11-01 15:00:00',
-            utc_end_date: '2027-01-15 23:00:00',
+            start_date: '2026-11-01 10:00:00',
+            end_date: '2027-01-15 18:00:00',
             categories: [{ name: 'Exhibit' }],
             venue: { venue: 'Family Heritage Experience', city: 'Boston', zip: '02116', geo_lat: 42.3486, geo_lng: -71.0742 },
           }),
@@ -450,5 +453,90 @@ describe('live events in recommendations', () => {
     const later = createApp(db, { live: new LiveEvents([], { quiet: true }), now: () => NOON });
     const history = await request(later).get('/api/history').set('Authorization', `Bearer ${auth.token}`);
     expect(history.body[0].place.name).toBe('One Night Only');
+  });
+});
+
+describe('planning ahead, calendars and the wider search', () => {
+  const me = [{ id: 'a', firstName: 'A', prefs: new Set(['Live music']), weights: {}, doneIds: new Set<string>(), wantIds: new Set<string>() }];
+  const TOMORROW = '2026-11-23';
+  const tmr = (h: number, m = 0) => bostonWallTime(TOMORROW, h, m);
+
+  it('keeps events for the coming days and finds tomorrow-night shows', async () => {
+    const show = livePlace({ id: 'tmr', name: 'Tomorrow Show', startsAt: tmr(19, 30).toISOString() });
+    const live = new LiveEvents([fakeSource('ticketmaster', [show])], { now: () => NOON, quiet: true });
+    await live.refresh();
+    expect(live.events().map((p) => p.id)).toContain('tmr');
+    expect(live.status().today).toBe(0);
+    expect(live.status().total).toBe(1);
+
+    const r = recommend(
+      { location: 'cambridge', type: 'event', price: '40plus', startAt: tmr(19).toISOString(), durationMinutes: 120 },
+      { places: [show], members: me, now: NOON, random: () => 0.5 },
+    );
+    expect(r.suggestions.map((s) => s.place.id)).toEqual(['tmr']);
+    expect(r.suggestions[0].reasons[0]).toBe('One-time event');
+  });
+
+  it('uses daily hours for multi-day exhibits', () => {
+    const exhibit = livePlace({
+      id: 'ex',
+      type: 'activity',
+      name: 'Long-running exhibit',
+      startsAt: bostonWallTime('2026-11-01', 10).toISOString(),
+      endsAt: bostonWallTime('2027-01-15', 17).toISOString(),
+      openHours: true,
+      tags: ['Museums'],
+    } as never);
+    const ask = (h: number) =>
+      recommend(
+        { location: 'cambridge', type: 'activity', price: '40plus', startAt: tmr(h).toISOString(), durationMinutes: 90 },
+        { places: [exhibit], members: me, now: NOON, random: () => 0.5 },
+      ).suggestions.map((s) => s.place.id);
+    expect(ask(14)).toEqual(['ex']); // 2 PM: open
+    expect(ask(20)).toEqual([]); // 8 PM: closed for the day
+  });
+
+  it('puts T-reachable towns in "Greater Boston", not far-off places', () => {
+    expect(placeForPoint(42.4266, -71.0741)).toBe('greater'); // Malden Center
+    expect(placeForPoint(42.0909, -71.2643)).toBeNull(); // Gillette: Commuter Rail only
+    expect(placeForPoint(42.3743, -71.1209)).toBe('cambridge');
+  });
+
+  it('only widens past next door when you opt in', () => {
+    const malden = livePlace({ id: 'malden', name: 'Malden Show', neighborhood: 'greater', startsAt: tmr(19, 30).toISOString(), lat: 42.4266, lng: -71.0741 });
+    const req = { location: 'seaport' as const, type: 'event' as const, price: '40plus' as const, startAt: tmr(19).toISOString(), durationMinutes: 120 };
+    const ctxR = { places: [malden], members: me, now: NOON, random: () => 0.5 };
+    expect(recommend(req, ctxR).suggestions).toHaveLength(0);
+    const wide = recommend({ ...req, widen: true }, ctxR);
+    expect(wide.widened).toBe(true);
+    expect(wide.suggestions[0].place.id).toBe('malden');
+    expect(wide.suggestions[0].stretchNote).toMatch(/^Outside Seaport/);
+  });
+
+  it('exports plans to calendars: a single .ics and a private feed', async () => {
+    const show = livePlace({ name: 'Calendar Show', startsAt: tmr(19, 30).toISOString(), address: '52 Church St, Cambridge, MA' });
+    const db = new Db(null);
+    const live = new LiveEvents([fakeSource('ticketmaster', [show])], { now: () => NOON, quiet: true });
+    await live.refresh();
+    const app = createApp(db, { live, now: () => NOON, random: () => 0.5 });
+    const { body: auth } = await request(app).post('/api/auth/guest');
+    const authed = (r: request.Test) => r.set('Authorization', `Bearer ${auth.token}`);
+    const plan = await authed(request(app).post('/api/plans')).send({
+      placeId: show.id,
+      request: { location: 'cambridge', type: 'event', price: '40plus', durationMinutes: 120 },
+    });
+    expect(plan.body.startsAt).toBe(show.live!.startsAt);
+
+    const ics = await authed(request(app).get(`/api/plans/${plan.body.id}/calendar.ics`));
+    expect(ics.headers['content-type']).toMatch(/text\/calendar/);
+    expect(ics.text).toContain('SUMMARY:Calendar Show');
+    expect(ics.text).toContain('DTSTART:20261124T003000Z'); // 7:30 PM Boston
+    expect(ics.text).toContain('LOCATION:52 Church St\\, Cambridge\\, MA');
+
+    const { body: feed } = await authed(request(app).get('/api/me/calendar'));
+    const sub = await request(app).get(feed.path); // no login: calendar apps can't log in
+    expect(sub.status).toBe(200);
+    expect(sub.text).toContain('Calendar Show');
+    expect((await request(app).get('/api/calendar/not-a-real-token-123456.ics')).status).toBe(404);
   });
 });

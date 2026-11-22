@@ -11,7 +11,7 @@ import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { useRecSession } from '../lib/session';
 import type { Plan, RecFeedback } from '../lib/types';
-import { windowLabel } from '../lib/util';
+import { dayName, windowLabel } from '../lib/util';
 
 /** Two options, A or B. Regenerating opens the feedback sheet. */
 export default function Results() {
@@ -47,7 +47,8 @@ export default function Results() {
   const hood = req.location === 'anywhere' ? 'Anywhere' : meta?.neighborhoods.find((n) => n.id === req.location)?.label;
   const typeLabel = meta?.types.find((t) => t.id === req.type)?.label;
   const color = TYPE_COLORS[req.type];
-  const span = windowLabel(req.startAt ? new Date(req.startAt) : new Date(), req.durationMinutes ?? 120);
+  const startDate = req.startAt ? new Date(req.startAt) : new Date();
+  const span = `${dayName(startDate) === 'Today' ? '' : `${dayName(startDate)}, `}${windowLabel(startDate, req.durationMinutes ?? 120)}`;
   const none = !session.loading && !a;
 
   return (
@@ -65,6 +66,11 @@ export default function Results() {
         </>
       )}
 
+      {session.suggestions.some((x) => x.widened) && (
+        <p className="notice">
+          Not enough in {hood} or right next door, so we looked anywhere on the T. Farther picks say where they are.
+        </p>
+      )}
       {session.exhausted && <p className="notice">You've seen everything that fits, so here are a couple again. Loosen a filter for fresh picks.</p>}
       {error && <p className="error">{error}</p>}
 
@@ -88,7 +94,10 @@ export default function Results() {
                   ? `No events start in ${hood} or right next door between ${span}.`
                   : `Nothing in ${hood} or right next door fits ${span}.`}
               </p>
-              <p className="muted small">We only suggest things nearby you can actually catch. Try a later start, more time, or another neighborhood.</p>
+              <p className="muted small">
+                We only suggest things nearby you can actually catch. Try another day or time, more time, or another neighborhood
+                {req.widen ? '.' : ', or turn on "Look anywhere on the T".'}
+              </p>
               <Link to="/discover" className="btn btn--primary">
                 Change the plan
               </Link>

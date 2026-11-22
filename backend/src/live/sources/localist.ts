@@ -1,6 +1,6 @@
 import type { NeighborhoodId, Place, PlaceType, PriceTier } from '../../types.js';
 import { nearestStop } from '../stations.js';
-import { APPROX_T_STOP, neighborhoodCenter, neighborhoodForAddress, neighborhoodForPoint } from '../geo.js';
+import { APPROX_T_STOP, inRange, neighborhoodCenter, neighborhoodForAddress, placeForPoint } from '../geo.js';
 import { cleanText, decodeHtml, emojiFor, priceTierFor, tagsFor } from '../tags.js';
 import { distanceKm } from '../geo.js';
 import { bostonParts, bostonWallTime, parseClock, timesForRange } from '../time.js';
@@ -31,7 +31,7 @@ export const KNOWN_LOCALIST: LocalistCalendar[] = [
 // Academic/admin events aren't "things to do"
 const SKIP_TYPE = /(seminar|lecture|conference|career|meeting|information session|info session|training|thesis|defen[cs]e|webinar|admission|recruit|orientation|office hours|religious|class|course|deadline|luncheon|presentation|employer)/i;
 const SKIP_TITLE =
-  /\b(info(rmation)? sessions?|office hours|seminar|colloquium|defen[cs]e|thesis|webinar|internship|career|recruit\w*|orientation|deadline|virtual|zoom|class:|course|faculty|staff meeting|dissertation|symposium|workshop series for|software|demonstration|poster|research|coffee chat|networking|admissions|q&a|employers?|rehearsal|auditions?)\b/i;
+  /\b(info(rmation)? sessions?|office hours|seminar|colloquium|defen[cs]e|thesis|webinar|internship|career|recruit\w*|orientation|deadline|virtual|zoom|class:|course|faculty|staff meeting|dissertation|symposium|workshop series for|software|demonstration|poster|research|coffee chat|networking|admissions|q&a|employers?|rehearsal|auditions?|colleagues?|employees?|staff)\b/i;
 
 interface LocalistEvent {
   id: number;
@@ -49,7 +49,7 @@ interface LocalistEvent {
   description_text?: string;
   keywords?: string[];
   tags?: string[];
-  geo?: { latitude?: string | number | null; longitude?: string | number | null; zip?: string | null };
+  geo?: { latitude?: string | number | null; longitude?: string | number | null; zip?: string | null; city?: string | null };
   filters?: { event_types?: { name: string }[] };
   event_instances?: { event_instance: { id: number; start: string; end?: string | null; all_day?: boolean } }[];
 }
@@ -60,13 +60,20 @@ export function localistSource(cal: LocalistCalendar): LiveSource {
     name: cal.name,
     refreshMs: 2 * 60 * 60 * 1000,
     async fetch(ctx) {
-      const json = await ctx.getJson(`https://${cal.domain}/api/2/events?start=${ctx.today}&days=1&pp=100`);
-      return normalizeLocalist(json, cal, ctx);
+      const out: Place[] = [];
+      for (let page = 1; page <= 5; page++) {
+        const json = (await ctx.getJson(
+          `https://${cal.domain}/api/2/events?start=${ctx.today}&days=${ctx.days}&pp=100&page=${page}`,
+        )) as { page?: { total?: number } };
+        out.push(...normalizeLocalist(json, cal, ctx));
+        if (!json?.page?.total || page >= json.page.total) break;
+      }
+      return out;
     },
   };
 }
 
-export function normalizeLocalist(json: unknown, cal: LocalistCalendar, ctx: Pick<SourceContext, 'today' | 'now'>): Place[] {
+export function normalizeLocalist(json: unknown, cal: LocalistCalendar, ctx: Pick<SourceContext, 'today' | 'endDate' | 'now'>): Place[] {
   const events = ((json as { events?: { event: LocalistEvent }[] })?.events ?? []).map((x) => x.event).filter(Boolean);
   const out: Place[] = [];
 
@@ -91,7 +98,7 @@ export function normalizeLocalist(json: unknown, cal: LocalistCalendar, ctx: Pic
     if (Number.isFinite(lat) && Number.isFinite(lng) && e.geo?.latitude) {
       // On (or right by) campus? It's the campus neighborhood, even if a
       // map anchor across the river is technically closer.
-      hood = distanceKm([lat, lng], [cal.lat, cal.lng]) < 1.3 ? cal.campus : neighborhoodForPoint(lat, lng);
+      hood = distanceKm([lat, lng], [cal.lat, cal.lng]) < 1.3 ? cal.campus : placeForPoint(lat, lng);
       point = [lat, lng];
     } else if (e.address) {
       hood = neighborhoodForAddress(e.address);
@@ -107,7 +114,9 @@ export function normalizeLocalist(json: unknown, cal: LocalistCalendar, ctx: Pic
       approx = hood !== cal.campus;
     }
 
-    const isAthletics = types.some((t) => /athletic|sport/i.test(t));
+    const isAthletics =
+      types.some((t) => /athletic|sport/i.test(t)) ||
+      /\b(basketball|hockey|soccer|football|volleyball|lacrosse|baseball|softball|tennis|swimming|field hockey|water polo|wrestling|rowing)\b/i.test(e.title);
     // "BC Women's Hockey at Northeastern" is an away game; home games say "vs."
     if (isAthletics && /\s(at|@)\s/i.test(e.title)) continue;
     const tags = new Set(tagsFor([e.title, ...types, ...(e.keywords ?? []), ...(e.tags ?? [])].join(' '), desc));
@@ -131,18 +140,20 @@ export function normalizeLocalist(json: unknown, cal: LocalistCalendar, ctx: Pic
 
     for (const { event_instance: inst } of e.event_instances ?? []) {
       let start = new Date(inst.start);
-      if (Number.isNaN(start.getTime()) || bostonParts(start).date !== ctx.today) continue;
+      if (Number.isNaN(start.getTime())) continue;
+      const day = bostonParts(start).date;
+      if (!inRange(day, ctx)) continue;
       let end = inst.end ? new Date(inst.end) : undefined;
       let timeTBA = false;
       if (inst.all_day) {
-        start = bostonWallTime(ctx.today, 9);
-        end = bostonWallTime(ctx.today, 17);
+        start = bostonWallTime(day, 9);
+        end = bostonWallTime(day, 17);
       } else if (!inst.end && bostonParts(start).hour < 5) {
         // placeholder time; try the description, otherwise mark it TBA
         const clock = descTime ? parseClock(descTime) : null;
-        if (clock) start = bostonWallTime(ctx.today, clock[0], clock[1]);
+        if (clock) start = bostonWallTime(day, clock[0], clock[1]);
         else {
-          start = bostonWallTime(ctx.today, 12);
+          start = bostonWallTime(day, 12);
           timeTBA = true;
         }
       }
@@ -183,6 +194,7 @@ export function normalizeLocalist(json: unknown, cal: LocalistCalendar, ctx: Pic
           venue: venue || undefined,
           campus: true,
           approxLocation: approx,
+          area: hood === 'greater' ? e.geo?.city ?? undefined : undefined,
           fetchedAt: ctx.now.toISOString(),
         },
       });
