@@ -16,6 +16,7 @@ import {
 import { Catalog } from './catalog.js';
 import { PLACES } from './data/places.js';
 import type { LiveEvents } from './live/liveEvents.js';
+import type { Images } from './images.js';
 import { Db, newId } from './db.js';
 import { buildIcs, type IcsEvent } from './ics.js';
 import { recommend } from './recommender.js';
@@ -53,12 +54,14 @@ export interface AppOptions {
   now?: () => Date;
   /** Today's real events; omit for catalog-only (tests, offline) */
   live?: LiveEvents | null;
+  /** Photo lookups for curated places */
+  images?: Images | null;
 }
 
 export function createApp(db: Db, opts: AppOptions = {}) {
   const random = opts.random ?? Math.random;
   const now = opts.now ?? (() => new Date());
-  const catalog = new Catalog(db, opts.live ?? null);
+  const catalog = new Catalog(db, opts.live ?? null, opts.images ?? null);
   const placeOf = (id: string) => catalog.get(id);
   const app = express();
   app.use(cors());
@@ -403,6 +406,13 @@ export function createApp(db: Db, opts: AppOptions = {}) {
       return planView(plan);
     }),
   );
+
+  // Google Places photos, proxied so the API key never reaches the browser
+  app.get('/api/photos/:placeId', async (req, res) => {
+    const url = await opts.images?.googlePhotoUrl(req.params.placeId).catch(() => null);
+    if (!url) return res.status(404).end();
+    res.set('Cache-Control', 'private, max-age=3000').redirect(302, url);
+  });
 
   // ───────────── calendar ─────────────
   // One plan as an .ics file (Apple Calendar / Outlook open it directly)

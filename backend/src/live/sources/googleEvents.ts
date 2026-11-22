@@ -17,6 +17,8 @@ interface GoogleEvent {
   description?: string;
   ticket_info?: { source?: string; link?: string; link_type?: string }[];
   venue?: { name?: string };
+  thumbnail?: string;
+  image?: string;
 }
 
 export function googleEventsSource(apiKey: string, refreshHours = 12): LiveSource {
@@ -121,6 +123,7 @@ export function normalizeGoogleEvents(json: unknown, ctx: Pick<SourceContext, 't
       emoji: emojiFor([...tags], 'event'),
       blurb: cleanText(r.description, 180) || `Happening at ${r.venue?.name ?? address}.`,
       localTip: 'Found via Google’s event listings. Confirm details on the event page.',
+      image: r.image || r.thumbnail ? { url: (r.image || r.thumbnail)!, credit: 'via Google Events', creditUrl: r.link, source: 'event' } : undefined,
       live: {
         source: 'google',
         sourceName: 'Google Events',

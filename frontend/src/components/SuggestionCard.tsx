@@ -5,6 +5,7 @@ import type { Suggestion } from '../lib/types';
 import { formatMinutes, liveWhen } from '../lib/util';
 import { ArrowIcon } from './Icons';
 import { TypeTag } from './PlaceBadge';
+import { PlacePhoto } from './PlacePhoto';
 import { LineDots } from './Transit';
 
 /** "Kendall/MIT (Red) · 4 min walk" → "Kendall/MIT · 4 min walk" */
@@ -40,6 +41,7 @@ export function SuggestionCard({ suggestion, letter, onChoose, onAddToCalendar, 
         {letter}
       </span>
       <div className="suggestion__body">
+        {place.image && <PlacePhoto place={place} />}
         {place.live ? (
           <p className="live-kicker">
             <span className="live-dot" aria-hidden />

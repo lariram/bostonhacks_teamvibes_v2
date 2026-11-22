@@ -21,6 +21,7 @@ interface TmEvent {
   };
   classifications?: { segment?: { name?: string }; genre?: { name?: string }; subGenre?: { name?: string } }[];
   priceRanges?: { min?: number; max?: number }[];
+  images?: { url: string; ratio?: string; width?: number; fallback?: boolean }[];
   _embedded?: {
     venues?: {
       name?: string;
@@ -142,6 +143,13 @@ export function normalizeTicketmaster(json: unknown, ctx: Pick<SourceContext, 't
       emoji: emojiFor([...tags], 'event'),
       blurb: cleanText(ev.info, 180) || `${what} at ${v.name ?? 'a Boston venue'}.`,
       localTip: cleanText(ev.pleaseNote, 160) || 'Ticket prices change, so check Ticketmaster before you go.',
+      image: (() => {
+        // the smallest 16:9 image that's still sharp on a phone
+        const pick = (ev.images ?? [])
+          .filter((i) => i.ratio === '16_9' && !i.fallback && (i.width ?? 0) >= 600)
+          .sort((a, b) => (a.width ?? 0) - (b.width ?? 0))[0];
+        return pick ? { url: pick.url, credit: 'Ticketmaster', creditUrl: ev.url, source: 'event' as const } : undefined;
+      })(),
       live: {
         source: 'ticketmaster',
         sourceName: 'Ticketmaster',

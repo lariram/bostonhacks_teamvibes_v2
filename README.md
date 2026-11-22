@@ -45,7 +45,7 @@ Open **http://localhost:5173** and tap **Try it as a guest**. No sign-up needed.
 - **Live events work out of the box** from seven public calendars (MIT, Northeastern, BU, Boston College, Downtown Boston, Massachusetts 250, SoWa). For concerts, sports, comedy and Google's listings, add free API keys: copy `backend/.env.example` to `backend/.env` and fill it in (see [Live events](#live-events-whats-on-today)).
 
 ```bash
-npm test            # 53 backend tests: algorithm, live-event parsing, end-to-end API flow
+npm test            # 56 backend tests: algorithm, live-event parsing, end-to-end API flow
 npm run typecheck   # both apps
 npm run build       # production build of the web app
 npm start           # one server on :3001 serving the API + built web app
@@ -91,6 +91,16 @@ The minimalism is on purpose: the app exists to remove decisions, so every scree
 ## Following
 
 Follow people from your crews, from the feed, or from their profile. The feed opens on **Following** (them plus you); **Everyone** is one tap away. If you don't follow anyone yet, it suggests people, crewmates first.
+
+## Photos
+
+Every recommendation can show a real photo (never AI-generated), always with a credit:
+1. **Live events** use the photo from their own listing (university calendars, Downtown Boston, Ticketmaster, Google Events).
+2. **Curated places** use **Google Places photos** if `GOOGLE_PLACES_API_KEY` is set (best coverage, restaurants included; served through `/api/photos/:id` so the key never reaches the browser, with the photographer credited, as Google requires).
+3. Otherwise **Wikipedia / Wikimedia Commons**: freely licensed photos only, for landmarks and venues with an article (about a third of the catalog).
+4. No photo? Cards just don't show one; thumbnails fall back to a small type-colored tile.
+
+We don't pull from Google Images search: those photos belong to their owners, and scraping Google's results breaks its terms.
 
 ## Maps
 

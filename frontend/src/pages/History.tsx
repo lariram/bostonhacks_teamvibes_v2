@@ -4,6 +4,7 @@ import { AddToCalendarSheet } from '../components/AddToCalendarSheet';
 import { BackIcon, BookmarkIcon, LockIcon } from '../components/Icons';
 import { TypeTag } from '../components/PlaceBadge';
 import { Stars } from '../components/Stars';
+import { PlacePhoto } from '../components/PlacePhoto';
 import { LineDot } from '../components/Transit';
 import { crewLine, TYPE_COLORS } from '../config';
 import { api } from '../lib/api';
@@ -217,7 +218,8 @@ function TheLine({
 function PlanStop({ plan }: { plan: Plan }) {
   const d = when(plan);
   return (
-    <Link to={`/plan/${plan.id}`} className="stop-link">
+    <Link to={`/plan/${plan.id}`} className="stop-link stop-link--photo">
+      {plan.place.image && <PlacePhoto place={plan.place} variant="thumb" />}
       <TypeTag type={plan.place.type}>{plan.neighborhoodLabel}</TypeTag>
       <strong className="stop-link__name">{plan.place.name}</strong>
       <span className="small muted">

@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { createApp } from './app.js';
 import { Db } from './db.js';
 import { LiveEvents, liveSourcesFromEnv } from './live/liveEvents.js';
+import { Images } from './images.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -22,7 +23,12 @@ const live = sources.length ? new LiveEvents(sources) : null;
 live?.start();
 console.log(sources.length ? `Live events from: ${sources.map((s) => s.name).join(', ')}` : 'Live events: off (catalog only)');
 
-const app = createApp(db, { live });
+// Real photos for curated places: Google Places with a key, otherwise Wikipedia/Commons
+const images = /^(off|false|0|no)$/i.test(process.env.PHOTOS ?? '') ? null : new Images(db, { googleKey: process.env.GOOGLE_PLACES_API_KEY });
+images?.warm();
+setInterval(() => images?.warm(), 6 * 60 * 60 * 1000).unref();
+
+const app = createApp(db, { live, images });
 
 // In production, serve the built frontend from the same server (npm run build first)
 const webDist = path.join(here, '..', '..', 'frontend', 'dist');

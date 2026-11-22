@@ -2,6 +2,7 @@ import { PLACES, PLACE_BY_ID } from './data/places.js';
 import type { Db } from './db.js';
 import { distanceKm } from './live/geo.js';
 import type { LiveEvents } from './live/liveEvents.js';
+import type { Images } from './images.js';
 import type { Place } from './types.js';
 
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -15,10 +16,19 @@ export class Catalog {
   constructor(
     private db: Db,
     readonly live: LiveEvents | null = null,
+    private images: Images | null = null,
   ) {}
 
+  /** Attach a cached photo to a curated place (live events carry their own) */
+  private withImage(p: Place): Place {
+    if (p.image || !this.images) return p;
+    const image = this.images.imageFor(p.id);
+    return image ? { ...p, image } : p;
+  }
+
   get(id: string): Place | undefined {
-    return PLACE_BY_ID[id] ?? this.live?.get(id) ?? this.db.data.livePlaces[id];
+    const p = PLACE_BY_ID[id] ?? this.live?.get(id) ?? this.db.data.livePlaces[id];
+    return p && this.withImage(p);
   }
 
   remember(place: Place) {
@@ -31,7 +41,7 @@ export class Catalog {
   /** What the recommender can choose from right now */
   candidates(now: Date): Place[] {
     const live = this.live?.events(now) ?? [];
-    if (!live.length) return PLACES;
+    if (!live.length) return PLACES.map((p) => this.withImage(p));
     // A real show tonight beats our generic "see what's on at this venue" entry
     const exact = live.filter((l) => l.type === 'event' && !l.live?.approxLocation);
     const liveNames = live.map((l) => norm(l.name));
@@ -44,6 +54,6 @@ export class Catalog {
             liveNames.some((n) => n.length >= 8 && (n.includes(norm(p.name)) || norm(p.name).includes(n)))),
       ).map((p) => p.id),
     );
-    return [...PLACES.filter((p) => !hidden.has(p.id)), ...live];
+    return [...PLACES.filter((p) => !hidden.has(p.id)).map((p) => this.withImage(p)), ...live];
   }
 }

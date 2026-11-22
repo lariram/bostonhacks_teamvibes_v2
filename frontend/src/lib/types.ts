@@ -44,6 +44,8 @@ export interface Place {
   localTip: string;
   /** Real, dated event from a live source (today only) */
   live?: LiveInfo;
+  /** A real photo (never AI-generated), shown with its credit */
+  image?: { url: string; credit: string; creditUrl?: string; source: 'event' | 'google' | 'wikipedia' };
 }
 
 export interface LiveInfo {

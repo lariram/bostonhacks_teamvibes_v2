@@ -2,6 +2,7 @@ import { useEffect, useState, type CSSProperties } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Avatar } from '../components/Avatar';
 import { MapView } from '../components/MapView';
+import { PlacePhoto } from '../components/PlacePhoto';
 import { FollowButton } from '../components/FollowButton';
 import { ArrowIcon, ChatIcon, CheckIcon, LockIcon } from '../components/Icons';
 import { Stars } from '../components/Stars';
@@ -49,6 +50,7 @@ export default function PlanDetails() {
     <div className="screen with-footer details">
       <TopBar back={true} title={<span className="label label--muted">{done ? 'Completed' : 'Now boarding'}</span>} />
 
+      {place.image && <PlacePhoto place={place} variant="hero" />}
       <StationSign
         color={TYPE_COLORS[place.type]}
         kicker={

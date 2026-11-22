@@ -47,6 +47,7 @@ interface LocalistEvent {
   ticket_cost?: string | null;
   ticket_url?: string | null;
   description_text?: string;
+  photo_url?: string | null;
   keywords?: string[];
   tags?: string[];
   geo?: { latitude?: string | number | null; longitude?: string | number | null; zip?: string | null; city?: string | null };
@@ -181,6 +182,7 @@ export function normalizeLocalist(json: unknown, cal: LocalistCalendar, ctx: Pic
           cleanText(desc.replace(/(Time|Location):[^\n]*/gi, ''), 180) ||
           `${types[0] ?? 'Event'} at ${cal.institution}.`,
         localTip: 'Campus event: double-check it’s open to the public before you go.',
+        image: e.photo_url ? { url: e.photo_url, credit: cal.name, creditUrl: e.localist_url, source: 'event' } : undefined,
         live: {
           source: 'localist',
           sourceName: cal.name,

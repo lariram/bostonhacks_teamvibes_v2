@@ -5,6 +5,7 @@ import { FollowButton } from '../components/FollowButton';
 import { BookmarkIcon, HeartIcon } from '../components/Icons';
 import { TypeTag } from '../components/PlaceBadge';
 import { Stars } from '../components/Stars';
+import { PlacePhoto } from '../components/PlacePhoto';
 import { LineDot } from '../components/Transit';
 import { crewLine } from '../config';
 import { api } from '../lib/api';
@@ -102,12 +103,15 @@ export default function Feed() {
                   <FollowButton userId={p.user.id} initial={false} />
                 </div>
               )}
-              <div className="post__place">
+              <div className="post__place post__place--photo">
+                <PlacePhoto place={p.place} variant="thumb" />
+                <div className="post__place-text">
                 <TypeTag type={p.place.type}>
                   {meta?.neighborhoods.find((n) => n.id === p.place.neighborhood)?.label ?? p.place.live?.area ?? 'Greater Boston'}
                 </TypeTag>
                 <strong className="post__name">{p.place.name}</strong>
                 <Stars value={p.rating} size={13} />
+                </div>
               </div>
               {p.caption && <p className="post__caption">{p.caption}</p>}
               {p.group && (

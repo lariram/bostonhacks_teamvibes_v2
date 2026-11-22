@@ -38,6 +38,7 @@ interface WpEvent {
   utc_start_date?: string;
   utc_end_date?: string;
   cost?: string;
+  image?: { url?: string; sizes?: Record<string, { url?: string }> } | false;
   cost_details?: { values?: (string | number)[] };
   categories?: { name: string }[];
   tags?: { name: string }[];
@@ -173,6 +174,11 @@ export function normalizeWpEvents(json: unknown, site: WpEventsSite, ctx: Pick<S
       emoji: emojiFor([...tags], type),
       blurb: cleanText(e.excerpt || e.description, 180) || `At ${decodeHtml(v.venue ?? '')}.`,
       localTip: known?.localTip ?? `Listed on the ${site.name} calendar. Check the event page for tickets and times.`,
+      image: (() => {
+        const im = e.image || undefined;
+        const url = im?.sizes?.medium_large?.url ?? im?.sizes?.large?.url ?? im?.url;
+        return url ? { url, credit: site.name, creditUrl: e.url, source: 'event' as const } : undefined;
+      })(),
       live: {
         source: 'community',
         sourceName: site.name,

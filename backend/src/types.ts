@@ -54,6 +54,16 @@ export interface Place {
   localTip: string;
   /** Set for real, dated events pulled from live sources (today only) */
   live?: LiveInfo;
+  /** A real photo (never AI-generated), always shown with its credit */
+  image?: PlaceImage;
+}
+
+export interface PlaceImage {
+  url: string;
+  /** Who to credit, e.g. "Photo: Jane Doe" or "MIT Events" */
+  credit: string;
+  creditUrl?: string;
+  source: 'event' | 'google' | 'wikipedia';
 }
 
 export type LiveSourceId = 'ticketmaster' | 'localist' | 'community' | 'google';
@@ -228,4 +238,6 @@ export interface DbShape {
   posts: FeedPost[];
   /** Snapshots of live events someone picked, so history works after they leave the cache */
   livePlaces: Record<string, Place>;
+  /** Photo lookups for curated places (null = looked, found nothing) */
+  imageCache?: Record<string, { image: PlaceImage | null; googlePhoto?: string; fetchedAt: string }>;
 }
