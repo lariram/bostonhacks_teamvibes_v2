@@ -2,6 +2,7 @@ import { PLACES } from './data/places.js';
 import { WIKI_TITLES } from './data/wikiTitles.js';
 import type { Db } from './db.js';
 import type { Place, PlaceImage } from './types.js';
+import { scheduleFromGoogle, type Schedule } from './hours.js';
 
 /**
  * Real photos for curated places (live events bring their own from the listing).
@@ -127,7 +128,7 @@ export class Images {
       headers: {
         'Content-Type': 'application/json',
         'X-Goog-Api-Key': this.opts.googleKey!,
-        'X-Goog-FieldMask': 'places.id,places.photos',
+        'X-Goog-FieldMask': 'places.id,places.photos,places.regularOpeningHours',
       },
       body: JSON.stringify({
         textQuery: `${p.name}, ${p.address}`,
@@ -145,15 +146,24 @@ export class Images {
 
   /** Exposed for tests */
   applyGoogle(p: Place, json: unknown) {
-    const photo = (json as GoogleSearch).places?.[0]?.photos?.[0];
+    const found = (json as GoogleSearch).places?.[0];
+    const photo = found?.photos?.[0];
     const author = photo?.authorAttributions?.[0];
-    this.cache[p.id] = photo?.name
-      ? {
-          googlePhoto: photo.name,
-          image: { url: `/api/photos/${p.id}`, credit: author?.displayName ? `Photo: ${author.displayName}` : 'Google', creditUrl: author?.uri, source: 'google' },
-          fetchedAt: new Date().toISOString(),
-        }
-      : { image: null, fetchedAt: new Date().toISOString() };
+    const periods = found?.regularOpeningHours?.periods;
+    this.cache[p.id] = {
+      googlePhoto: photo?.name,
+      image: photo?.name
+        ? { url: `/api/photos/${p.id}`, credit: author?.displayName ? `Photo: ${author.displayName}` : 'Google', creditUrl: author?.uri, source: 'google' }
+        : null,
+      // Google's real opening hours replace our approximate ones
+      hours: periods?.length ? scheduleFromGoogle(periods) : undefined,
+      fetchedAt: new Date().toISOString(),
+    };
+  }
+
+  /** Real opening hours from Google, if we have them */
+  hoursFor(id: string): Schedule | undefined {
+    return this.cache[id]?.hours;
   }
 
   /** A fresh Google photo URL for /api/photos/:id (short-lived, so cached ~1 hour in memory only) */
@@ -178,5 +188,8 @@ interface WikiQuery {
   pages?: { title: string; pageimage?: string; thumbnail?: { source: string } }[];
 }
 interface GoogleSearch {
-  places?: { photos?: { name: string; authorAttributions?: { displayName?: string; uri?: string }[] }[] }[];
+  places?: {
+    photos?: { name: string; authorAttributions?: { displayName?: string; uri?: string }[] }[];
+    regularOpeningHours?: { periods?: { open?: { day: number; hour: number; minute?: number }; close?: { day: number; hour: number; minute?: number } }[] };
+  }[];
 }

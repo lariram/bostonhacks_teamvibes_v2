@@ -150,3 +150,26 @@ export function googleCalendarUrl(e: { title: string; start: Date; end: Date; lo
   });
   return `https://calendar.google.com/calendar/render?${p}`;
 }
+
+/**
+ * Your current location, if you allow it (asked once; remembered for 10 minutes).
+ * Resolves to undefined if denied, unavailable or slow, so searches never stall.
+ */
+export function currentLocation(timeoutMs = 5000): Promise<{ lat: number; lng: number } | undefined> {
+  if (!('geolocation' in navigator)) return Promise.resolve(undefined);
+  return new Promise((resolve) => {
+    const done = (v?: { lat: number; lng: number }) => resolve(v);
+    const timer = setTimeout(() => done(undefined), timeoutMs + 500);
+    navigator.geolocation.getCurrentPosition(
+      (p) => {
+        clearTimeout(timer);
+        done({ lat: Number(p.coords.latitude.toFixed(4)), lng: Number(p.coords.longitude.toFixed(4)) }); // ~10 m is plenty
+      },
+      () => {
+        clearTimeout(timer);
+        done(undefined);
+      },
+      { timeout: timeoutMs, maximumAge: 10 * 60 * 1000, enableHighAccuracy: false },
+    );
+  });
+}

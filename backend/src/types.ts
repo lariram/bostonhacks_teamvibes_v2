@@ -56,6 +56,8 @@ export interface Place {
   live?: LiveInfo;
   /** A real photo (never AI-generated), always shown with its credit */
   image?: PlaceImage;
+  /** Real opening hours (from Google Places); otherwise approximate ones from data/hours.ts */
+  openingHours?: { schedule: [number, number][][]; approx: boolean };
 }
 
 export interface PlaceImage {
@@ -143,6 +145,8 @@ export interface RecRequest {
   timeOfDay?: TimeOfDay;
   /** If nothing fits nearby, look anywhere reachable on the T */
   widen?: boolean;
+  /** Where you're leaving from (device location); otherwise we assume the area you picked */
+  from?: { lat: number; lng: number };
   groupMode?: boolean;
   groupId?: string;
   excludeIds?: string[];
@@ -166,6 +170,13 @@ export interface Suggestion {
   stretchNote?: string;
   /** Found by the wider, anywhere-on-the-T search */
   widened?: boolean;
+  /** Estimated trip there */
+  travel?: { minutes: number; mode: 'walk' | 'T'; summary: string; fromYou: boolean };
+  /** When you'd get there, and how long it's open after that */
+  arriveAt?: string;
+  openUntil?: string;
+  opensAt?: string;
+  hoursApprox?: boolean;
   communityRating?: { avg: number; count: number };
 }
 
@@ -239,5 +250,5 @@ export interface DbShape {
   /** Snapshots of live events someone picked, so history works after they leave the cache */
   livePlaces: Record<string, Place>;
   /** Photo lookups for curated places (null = looked, found nothing) */
-  imageCache?: Record<string, { image: PlaceImage | null; googlePhoto?: string; fetchedAt: string }>;
+  imageCache?: Record<string, { image: PlaceImage | null; googlePhoto?: string; hours?: [number, number][][]; fetchedAt: string }>;
 }

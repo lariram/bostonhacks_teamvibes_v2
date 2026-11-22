@@ -379,7 +379,8 @@ describe('live events in recommendations', () => {
       livePlace({ id: 'early', name: 'Early', startsAt: at(18).toISOString(), minutes: 90 }),
       livePlace({ id: 'inwin', name: 'In window', startsAt: at(19, 30).toISOString(), minutes: 90 }),
       livePlace({ id: 'late', name: 'Too late', startsAt: at(22).toISOString(), minutes: 90 }),
-      livePlace({ id: 'started', name: 'Started 20 min before window', startsAt: at(18, 40).toISOString(), minutes: 90 }),
+      livePlace({ id: 'started', name: 'Starts 10 min before window', startsAt: at(18, 50).toISOString(), minutes: 90 }),
+      livePlace({ id: 'toolate', name: 'You would arrive 20+ min late', startsAt: at(18, 35).toISOString(), minutes: 90 }),
     ];
     const r = recommend(
       { location: 'cambridge', type: 'event', price: '40plus', startAt: at(19).toISOString(), durationMinutes: 120 },

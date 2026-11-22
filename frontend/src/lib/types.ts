@@ -129,6 +129,8 @@ export interface RecRequest {
   timeOfDay?: TimeOfDay;
   /** If nothing fits nearby, look anywhere reachable on the T */
   widen?: boolean;
+  /** Where you're leaving from (device location, if you allow it) */
+  from?: { lat: number; lng: number };
   groupMode?: boolean;
   groupId?: string;
   excludeIds?: string[];
@@ -141,6 +143,11 @@ export interface Suggestion {
   reasons: string[];
   stretchNote?: string;
   widened?: boolean;
+  travel?: { minutes: number; mode: 'walk' | 'T'; summary: string; fromYou: boolean };
+  arriveAt?: string;
+  openUntil?: string;
+  opensAt?: string;
+  hoursApprox?: boolean;
   communityRating?: { avg: number; count: number };
 }
 
@@ -182,6 +189,7 @@ export interface Plan {
   place: Place;
   neighborhoodLabel: string;
   station?: { name: string; lat: number; lng: number; km: number } | null;
+  hours?: { text: string; approx: boolean } | null;
   group: Group | null;
 }
 

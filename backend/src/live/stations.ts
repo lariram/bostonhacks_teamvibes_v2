@@ -1,7 +1,7 @@
 import { distanceKm } from './geo.js';
 
 /** Main T stations in the neighborhoods we cover (approximate coordinates) */
-const STATIONS: [string, number, number][] = [
+export const STATIONS: [string, number, number][] = [
   ['Davis (Red)', 42.3967, -71.1218],
   ['Porter (Red)', 42.3884, -71.1191],
   ['Harvard (Red)', 42.3734, -71.1189],

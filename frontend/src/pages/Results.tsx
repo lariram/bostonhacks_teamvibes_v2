@@ -69,6 +69,12 @@ export default function Results() {
         </>
       )}
 
+      {!none && (
+        <p className="travel-note small muted">
+          {req.from ? 'Travel times from where you are now.' : `Travel times from ${hood} (turn on location for times from where you are).`} Only places
+          still open when you’d arrive.
+        </p>
+      )}
       {session.suggestions.some((x) => x.widened) && (
         <p className="notice">
           Not enough in {hood} or right next door, so we looked anywhere on the T. Farther picks say where they are.

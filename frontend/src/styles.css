@@ -855,6 +855,18 @@ ol {
   align-items: center;
   gap: 6px;
 }
+.suggestion__getting {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--ink);
+  margin: 8px 0 0;
+}
+.travel-note {
+  margin: -8px 0 16px;
+}
 .suggestion__blurb {
   margin: 12px 0 10px;
   font-weight: 300;

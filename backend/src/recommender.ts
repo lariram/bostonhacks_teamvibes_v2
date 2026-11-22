@@ -1,6 +1,8 @@
 import { CLASSICS, DURATION_MINUTES, NEIGHBORHOOD_BY_ID, PRICE_TIERS, priceRank, TOURIST_TRAPS } from './data/meta.js';
 import { bostonParts, bostonWallTime, formatBostonTime, timeOfDayAt } from './live/time.js';
 import { distanceKm, neighborhoodCenter } from './live/geo.js';
+import { scheduleFor, visitWindow } from './hours.js';
+import { estimateTravel, type Travel } from './travel.js';
 import type { NeighborhoodId, Persona, Place, PriceTier, RecRequest, Suggestion, TimeOfDay } from './types.js';
 
 /**
@@ -87,6 +89,15 @@ interface Candidate {
   score: number;
   stretchNote?: string;
   widened?: boolean;
+  trip?: Trip;
+}
+
+interface Trip {
+  travel: Travel & { fromYou: boolean };
+  arrive: Date;
+  openUntil?: Date;
+  opensAt?: Date;
+  hoursApprox?: boolean;
 }
 
 /**
@@ -135,21 +146,31 @@ export function recommend(req: RecRequest, ctx: RecContext): RecResult {
     // Never recommend something that's out of season
     (!place.months || place.months.includes(month));
 
+  // Where you're starting from: your location if the app has it, otherwise the area you picked
+  const origin: [number, number] = req.from
+    ? [req.from.lat, req.from.lng]
+    : neighborhoodCenter((req.location === 'anywhere' ? 'downtown' : req.location) as NeighborhoodId);
+
   const pool: Candidate[] = [];
   for (const place of ctx.places) {
     if (!eligible(place)) continue;
     const stage = stageFor(place);
     if (stage === null) continue;
-    pool.push({ place, stage: stage.stage, stretchNote: stage.note, score: scoreFor(place, stage.stage) });
+    pool.push({ place, stage: stage.stage, stretchNote: stage.note, trip: stage.trip, score: scoreFor(place, stage.stage, stage.trip) });
   }
 
-  function stageFor(place: Place, anyLocation = false): { stage: number; note?: string } | null {
+  function stageFor(place: Place, anyLocation = false): { stage: number; note?: string; trip?: Trip } | null {
     // Location: your neighborhood, or right next door. Never across town (unless you opted
     // into the wider search, which is a separate pass below).
     const sameHood = anyLocation || (anywhere ? place.neighborhood !== 'greater' : place.neighborhood === req.location);
     if (!sameHood && !near.includes(place.neighborhood)) return null;
     let stage = sameHood ? 0 : 1;
     const notes: string[] = [];
+
+    // Getting there takes time: everything below is judged at the moment you'd arrive
+    const travel = { ...estimateTravel(origin, [place.lat, place.lng]), fromYou: !!req.from };
+    const arrive = new Date(win.start.getTime() + travel.minutes * MIN);
+    const trip: Trip = { travel, arrive };
 
     if (place.live) {
       // Live listings must actually be catchable in your window
@@ -170,18 +191,38 @@ export function recommend(req: RecRequest, ctx: RecContext): RecResult {
           openS = Math.max(s, bostonWallTime(day, sh, sm).getTime());
           openE = Math.min(e, bostonWallTime(day, eh, em).getTime());
         }
-        if (openS > win.end.getTime() || openE < win.start.getTime() + 30 * MIN) return null; // need 30+ min inside
+        // you need 30+ minutes there after you arrive, before it closes
+        const from = Math.max(openS, arrive.getTime());
+        if (from > win.end.getTime() || openE - from < 30 * MIN) return null;
+        trip.openUntil = new Date(openE);
+        if (openS > arrive.getTime() + 10 * MIN) trip.opensAt = new Date(openS);
       } else {
         if (s < now.getTime() - 30 * MIN) return null; // started too long ago
         if (s < win.start.getTime() - 30 * MIN || s > win.end.getTime()) return null; // not in your window
+        if (s < arrive.getTime() - 15 * MIN) return null; // you'd get there more than 15 min late
         if (e > win.end.getTime() + 15 * MIN) {
           notes.push(`${live.endEstimated ? 'Runs about' : 'Runs until'} ${live.endEstimated ? formatMinutes(place.minutes) : formatBostonTime(new Date(e))}, past your window`);
         }
       }
     } else {
-      // Curated places: good at that time of day, and fits in the time you have
+      // Curated places: open when you get there (with time for a real visit), and fits your time
       if (place.minutes > win.minutes * 2) return null;
-      const timeOk = place.times.includes(win.timeOfDay);
+      const hours = place.openingHours ?? scheduleFor(place.id);
+      let timeOk = place.times.includes(win.timeOfDay);
+      if (hours) {
+        const visit = visitWindow(hours.schedule, arrive, win.end);
+        if (!visit) return null; // closed by the time you'd get there (or all window long)
+        const left = (visit.until.getTime() - visit.from.getTime()) / MIN;
+        if (left < Math.min(place.minutes, 45)) return null; // not enough time before it closes
+        trip.openUntil = visit.until;
+        trip.hoursApprox = hours.approx;
+        if (visit.from.getTime() > arrive.getTime() + 10 * MIN) {
+          trip.opensAt = visit.from;
+          notes.push(`Opens at ${formatBostonTime(visit.from)}`);
+        }
+        if (left < place.minutes) notes.push(`Closes at ${formatBostonTime(visit.until)}, so a shorter visit`);
+        timeOk = true; // real hours beat our "best time of day" guess
+      }
       const durOk = place.minutes <= win.minutes;
       if (!timeOk || !durOk) {
         if (place.minutes > win.minutes * 1.5) return null;
@@ -201,10 +242,10 @@ export function recommend(req: RecRequest, ctx: RecContext): RecResult {
       stage = 4;
       notes.push("You've seen this one already");
     }
-    return { stage, note: notes.length ? notes.join(' · ') : undefined };
+    return { stage, note: notes.length ? notes.join(' · ') : undefined, trip };
   }
 
-  function scoreFor(place: Place, stage: number): number {
+  function scoreFor(place: Place, stage: number, trip?: Trip): number {
     const interest = groupInterest(place, ctx.members);
     const loc = anywhere ? 0.7 : place.neighborhood === req.location ? 1 : near.includes(place.neighborhood) ? (req.feedback?.closer ? 0.25 : 0.45) : 0.2;
     const priceFit = clamp(1 - 0.12 * Math.abs(budgetRank - priceRank(place.price)), 0, 1);
@@ -222,6 +263,7 @@ export function recommend(req: RecRequest, ctx: RecContext): RecResult {
       const overlap = place.tags.filter((t) => lastShownTags.has(t)).length;
       s -= Math.min(overlap, 2) * 0.12;
     }
+    if (trip) s -= Math.max(0, trip.travel.minutes - 15) * 0.004; // a long trip is a small cost
     s += random() * 0.06; // a little variety so "regenerate" feels alive
     s -= stage * 0.3;
     return s;
@@ -254,10 +296,11 @@ export function recommend(req: RecRequest, ctx: RecContext): RecResult {
         place,
         stage: st.stage,
         widened: true,
+        trip: st.trip,
         stretchNote: [`Outside ${NEIGHBORHOOD_BY_ID[req.location as NeighborhoodId].label}: ${where}, ~${km.toFixed(1)} km`, st.note]
           .filter(Boolean)
           .join(' · '),
-        score: scoreFor(place, st.stage) - km * 0.04,
+        score: scoreFor(place, st.stage, st.trip) - km * 0.04,
       });
     }
     wider.sort((a, b) => b.score - a.score);
@@ -280,6 +323,11 @@ export function recommend(req: RecRequest, ctx: RecContext): RecResult {
       reasons: buildReasons(c.place, req, ctx, budget, now),
       stretchNote: c.stretchNote,
       widened: c.widened || undefined,
+      travel: c.trip?.travel,
+      arriveAt: c.trip?.arrive.toISOString(),
+      openUntil: c.trip?.openUntil?.toISOString(),
+      opensAt: c.trip?.opensAt?.toISOString(),
+      hoursApprox: c.trip?.hoursApprox,
       communityRating: ctx.communityRatings?.[c.place.id],
     })),
     exhausted: picks.some((c) => c.stage >= 4), // only when we're actually repeating something

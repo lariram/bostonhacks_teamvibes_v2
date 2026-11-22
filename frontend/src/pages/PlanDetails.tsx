@@ -88,6 +88,15 @@ export default function PlanDetails() {
             </a>
           </dd>
         </div>
+        {plan.hours && (
+          <div>
+            <dt className="label">Hours</dt>
+            <dd>
+              {plan.hours.text}
+              {plan.hours.approx && <span className="muted"> · approximate, check before you go</span>}
+            </dd>
+          </div>
+        )}
         <div>
           <dt className="label">Cost</dt>
           <dd>

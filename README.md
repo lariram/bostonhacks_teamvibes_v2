@@ -45,7 +45,7 @@ Open **http://localhost:5173** and tap **Try it as a guest**. No sign-up needed.
 - **Live events work out of the box** from seven public calendars (MIT, Northeastern, BU, Boston College, Downtown Boston, Massachusetts 250, SoWa). For concerts, sports, comedy and Google's listings, add free API keys: copy `backend/.env.example` to `backend/.env` and fill it in (see [Live events](#live-events-whats-on-today)).
 
 ```bash
-npm test            # 56 backend tests: algorithm, live-event parsing, end-to-end API flow
+npm test            # 64 backend tests: algorithm, live-event parsing, end-to-end API flow
 npm run typecheck   # both apps
 npm run build       # production build of the web app
 npm start           # one server on :3001 serving the API + built web app
@@ -151,6 +151,8 @@ If your network uses an HTTPS proxy, start the server with `NODE_USE_ENV_PROXY=1
 - Out-of-season things (Swan Boats in November) are never suggested.
 
 **Location comes first.** Picks are always in your neighborhood. Only if it can't find two there does it use a neighborhood right next door, and it never goes farther. If nothing fits, you get one pick, or an honest "nothing fits" with a nudge to change the time, rather than something across town. **Optional wider search:** turn on *"Nothing here? Look anywhere on the T"* and, only when there isn't enough nearby, it also looks anywhere reachable by subway, Green Line or Silver Line (no Commuter Rail): all 12 neighborhoods plus T towns like Malden, Quincy, Brookline and Revere. Those picks say where they are and how far.
+
+**Open when you get there.** Every pick is judged at the moment you'd *arrive*, not when you leave. The trip is estimated from where you are (if you allow location; otherwise from the area you picked): walking for short hops, otherwise walk to the nearest station + wait + ride + any line change + walk. A place has to be open on arrival with enough time left for a real visit (or open later inside your window, labeled "Opens at 5 PM"). A show only counts if you'd get there no more than 15 minutes after it starts. Cards show it plainly: *"🚇 ~14 min by T · Open till 9 PM"*. Hours for the curated places are **approximate** (`backend/src/data/hours.ts`) unless you add a `GOOGLE_PLACES_API_KEY`, in which case Google's real opening hours are used.
 
 **Events are real events.** "Event" only ever means a dated listing from a live source that starts within your window (or up to 30 minutes before it), never a venue that might have something on. Food and activities come from the curated places (plus live exhibits and workshops that are open during your window).
 

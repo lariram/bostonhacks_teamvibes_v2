@@ -2,7 +2,7 @@ import { NEIGHBORHOOD_LINES, TYPE_COLORS, linesFromStop } from '../config';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import type { Suggestion } from '../lib/types';
-import { formatMinutes, liveWhen } from '../lib/util';
+import { bostonTime, formatMinutes, liveWhen } from '../lib/util';
 import { ArrowIcon } from './Icons';
 import { TypeTag } from './PlaceBadge';
 import { PlacePhoto } from './PlacePhoto';
@@ -60,6 +60,19 @@ export function SuggestionCard({ suggestion, letter, onChoose, onAddToCalendar, 
           </span>
           {place.live && <span className="muted">via {place.live.sourceName}</span>}
         </p>
+        {(suggestion.travel || suggestion.openUntil) && (
+          <p className="suggestion__getting">
+            {suggestion.travel && <span>{suggestion.travel.mode === 'walk' ? '🚶' : '🚇'} {suggestion.travel.summary.replace(/ \(.*\)$/, '')}</span>}
+            {suggestion.opensAt ? (
+              <span>Opens {bostonTime(suggestion.opensAt)}</span>
+            ) : suggestion.openUntil && !place.live ? (
+              <span>
+                Open till {bostonTime(suggestion.openUntil)}
+                {suggestion.hoursApprox ? ' (approx.)' : ''}
+              </span>
+            ) : null}
+          </p>
+        )}
         <p className="suggestion__blurb">{place.blurb}</p>
         <ul className="reasons">
           {reasons.map((r) => (

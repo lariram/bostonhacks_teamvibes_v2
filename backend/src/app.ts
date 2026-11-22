@@ -21,6 +21,8 @@ import { Db, newId } from './db.js';
 import { buildIcs, type IcsEvent } from './ics.js';
 import { recommend } from './recommender.js';
 import { nearestStation } from './live/stations.js';
+import { intervalsAround, scheduleFor as openingHoursFor } from './hours.js';
+import { formatBostonTime, bostonParts } from './live/time.js';
 import {
   communityRatings,
   createSession,
@@ -794,6 +796,19 @@ export function createApp(db: Db, opts: AppOptions = {}) {
       ...plan,
       place: catalog.get(plan.placeId),
       neighborhoodLabel: NEIGHBORHOOD_BY_ID[catalog.get(plan.placeId)?.neighborhood ?? 'downtown'].label,
+      // Opening hours on the day of the plan ("11 AM – 11:30 PM"), flagged if approximate
+      hours: (() => {
+        const p = catalog.get(plan.placeId);
+        if (!p || p.live) return null;
+        const h = p.openingHours ?? openingHoursFor(p.id);
+        if (!h) return null;
+        const day = new Date(plan.startsAt ?? plan.createdAt);
+        const today = intervalsAround(h.schedule, day).filter(([o]) => bostonParts(o).date === bostonParts(day).date);
+        return {
+          text: today.length ? today.map(([o, c]) => `${formatBostonTime(o)} – ${formatBostonTime(c)}`).join(', ') : 'Closed',
+          approx: h.approx,
+        };
+      })(),
       station: (() => {
         const p = catalog.get(plan.placeId);
         return p && !p.live?.approxLocation ? nearestStation(p.lat, p.lng) : null;
@@ -834,6 +849,10 @@ function parseRecRequest(body: any): RecRequest {
     timeOfDay,
     groupMode: !!b.groupMode,
     widen: !!b.widen,
+    from:
+      b.from && Number.isFinite(Number(b.from.lat)) && Number.isFinite(Number(b.from.lng))
+        ? { lat: Number(b.from.lat), lng: Number(b.from.lng) }
+        : undefined,
     groupId: typeof b.groupId === 'string' && b.groupId ? b.groupId : undefined,
     excludeIds: Array.isArray(b.excludeIds) ? b.excludeIds.map(String).slice(0, 200) : [],
     feedback: {

@@ -8,7 +8,7 @@ import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { useRecSession } from '../lib/session';
 import type { Group, LiveStatus, PlaceType, PriceTier, RecRequest } from '../lib/types';
-import { clock, dayName, durationLabel, startSlots, upcomingDays, windowLabel } from '../lib/util';
+import { clock, currentLocation, dayName, durationLabel, startSlots, upcomingDays, windowLabel } from '../lib/util';
 
 /** 'now' or an ISO start time */
 type When = 'now' | string;
@@ -95,6 +95,8 @@ export default function Discover() {
 
   async function go() {
     if (!ready) return;
+    // Travel times are measured from where you are (if you allow it), else from the area you picked
+    const from = await currentLocation();
     const req: RecRequest = {
       location,
       type,
@@ -103,6 +105,7 @@ export default function Discover() {
       startAt: when === 'now' ? new Date().toISOString() : when,
       groupMode: group ? false : groupMode,
       widen: location !== 'anywhere' && widen,
+      from,
       groupId: group?.id,
     };
     if (await session.generate(req)) navigate('/discover/results');

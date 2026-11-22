@@ -21,9 +21,11 @@ export class Catalog {
 
   /** Attach a cached photo to a curated place (live events carry their own) */
   private withImage(p: Place): Place {
-    if (p.image || !this.images) return p;
-    const image = this.images.imageFor(p.id);
-    return image ? { ...p, image } : p;
+    if (!this.images || p.live) return p;
+    const image = p.image ?? this.images.imageFor(p.id);
+    const google = this.images.hoursFor(p.id);
+    if (!image && !google) return p;
+    return { ...p, ...(image ? { image } : {}), ...(google ? { openingHours: { schedule: google, approx: false } } : {}) };
   }
 
   get(id: string): Place | undefined {
