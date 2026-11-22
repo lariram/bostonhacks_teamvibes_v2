@@ -175,7 +175,7 @@ export class LiveEvents {
 function defaultGetJson(timeoutMs: number) {
   return async (url: string) => {
     const res = await fetch(url, {
-      headers: { Accept: 'application/json', 'User-Agent': 'common-boston/1.0 (student hackathon project)' },
+      headers: { Accept: 'application/json', 'User-Agent': 'outbound-boston/1.0 (student hackathon project)' },
       signal: AbortSignal.timeout(timeoutMs),
     });
     // never echo the URL: it can contain an API key

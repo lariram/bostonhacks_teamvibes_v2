@@ -1,4 +1,9 @@
-const TOKEN_KEY = 'common.token';
+const TOKEN_KEY = 'outbound.token';
+// Keep people signed in across the rename from "common"
+if (!localStorage.getItem(TOKEN_KEY) && localStorage.getItem('common.token')) {
+  localStorage.setItem(TOKEN_KEY, localStorage.getItem('common.token')!);
+  localStorage.removeItem('common.token');
+}
 
 export const getToken = () => localStorage.getItem(TOKEN_KEY);
 export const setToken = (t: string | null) => (t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY));
@@ -10,7 +15,7 @@ export class ApiError extends Error {
 }
 
 /** Fired when the server says our session is gone, so the app can bounce to login. */
-export const UNAUTHORIZED_EVENT = 'common:unauthorized';
+export const UNAUTHORIZED_EVENT = 'outbound:unauthorized';
 
 export async function api<T>(path: string, opts: { method?: string; body?: unknown } = {}): Promise<T> {
   const token = getToken();

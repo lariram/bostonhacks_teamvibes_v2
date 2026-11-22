@@ -1,4 +1,4 @@
-# common.
+# OutBound
 
 **Two picks. One crew. Your next stop.**
 
@@ -6,7 +6,7 @@ BostonHacks 2026 · Team Vibes · Track: **Boundless Boston**
 
 Boston is America's college city: 35+ campuses, a quarter-million students, and most of them never leave their bubble. BU stays on Comm Ave, Harvard stays in the Square, and the people who've lived here their whole lives rarely meet either. On top of that, "what should we do?" is its own kind of exhausting.
 
-**common** kills the decision paralysis and the bubble at the same time:
+**OutBound** kills the decision paralysis and the bubble at the same time:
 
 1. **Tell it who you are** (student, local, visiting, new in town), then **four quick stops:** where, what (event / activity / food), budget, and when (today or any day in the next two weeks, a start time in 30-minute steps, and how long you have). You get **two** options, A or B. That's the whole decision. Not feeling either? Tell it one thing ("Japanese", "cheaper") and get two more. Picks include **real events happening today**, pulled live from public Boston calendars (universities, Downtown Boston, Massachusetts 250, SoWa), plus Ticketmaster and Google's event listings if you add keys.
 2. **"Find me a crew."** When you take a pick, you're matched with other Bostonians headed to the same spot.
@@ -14,7 +14,7 @@ Boston is America's college city: 35+ campuses, a quarter-million students, and 
 
 Rate each stop (5 stars + private notes), post it to the feed, and watch **Your Boston**, a T-style map of all 12 neighborhoods, light up as you explore.
 
-> *Named for Boston Common, where America's first subway opened in 1897.* Working name: change `APP_NAME` in `frontend/src/config.ts`.
+> *On the T, outbound means leaving downtown for somewhere new.* The name lives in `APP_NAME` in `frontend/src/config.ts`.
 
 ---
 
@@ -76,7 +76,7 @@ The whole visual system is borrowed from the T: black-and-white Helvetica signag
 | You | Your history is your own line, in your color |
 
 Signature pieces (all in `frontend/src/components/Transit.tsx`):
-- **Brand mark:** four T lines converging on one station. *common* = where Boston's lines meet.
+- **Brand mark:** four T lines converging on one station. *OutBound*: every T line heads out from downtown toward somewhere new.
 - **The route:** the planner is a line diagram. Each question is a stop, and the line fills in as you answer.
 - **The fork:** results open with one track splitting into branches **A** and **B**, like the Green Line branches.
 - **Station sign:** every place gets a black platform-style sign with its nearest T line bullets.
@@ -88,7 +88,7 @@ Signature pieces (all in `frontend/src/components/Transit.tsx`):
 
 The minimalism is on purpose: the app exists to remove decisions, so every screen asks for one thing.
 
-*common is a student project and is not affiliated with the MBTA. The line colors are a nod to the T.*
+*OutBound is a student project and is not affiliated with the MBTA. The line colors are a nod to the T.*
 
 ## Following
 
@@ -110,7 +110,7 @@ Each place gets a quiet light-gray map (OpenStreetMap tiles, grayscale) with the
 
 ## Live events: what's on today
 
-On top of the 106 curated spots, common pulls **real events for the next two weeks** (in Boston time) and mixes them into the picks, so you can plan tonight or next Thursday. A real show tonight gets a boost and says so: *"Starts in 40 min"*, *"Only on today"*.
+On top of the 106 curated spots, OutBound pulls **real events for the next two weeks** (in Boston time) and mixes them into the picks, so you can plan tonight or next Thursday. A real show tonight gets a boost and says so: *"Starts in 40 min"*, *"Only on today"*.
 
 | Source | What it adds | Setup |
 | --- | --- | --- |
@@ -166,7 +166,7 @@ If your network uses an HTTPS proxy, start the server with `NODE_USE_ENV_PROXY=1
 
 **Crews:** every rider's interest is scored separately and combined as `0.6·(least-happy rider) + 0.4·(average)`, so nobody gets dragged somewhere they'd hate. The budget is capped at the lowest rider's comfort level, and anywhere the crew has already been is skipped.
 
-**Crew matching** (`services.ts → matchCrew`): if someone else is forming a crew at the same spot (within 6 hours), you join theirs. That's how two real users get matched. Otherwise a new crew starts and invites the most compatible locals (shared interests, similar age, would like this place).
+**Crew matching** (`services.ts → matchCrew`): if someone else is forming a crew at the same spot (within 6 hours), you join theirs. That's how two real users get matched. Otherwise a new crew starts and invites the most compatible locals (shared interests, similar age, would like this place). New groups are named after where they met (e.g. "Regina Pizzeria group"), and any member can rename one with the pencil next to its name; the chat notes who renamed it. Groups that still have an old auto-generated name are renamed this way on startup.
 
 ## Project structure
 

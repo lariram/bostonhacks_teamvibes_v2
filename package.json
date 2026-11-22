@@ -1,5 +1,5 @@
 {
-  "name": "common-boston",
+  "name": "outbound-boston",
   "private": true,
   "workspaces": [
     "backend",

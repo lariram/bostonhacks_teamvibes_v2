@@ -1,5 +1,5 @@
 /*
- * common. design system
+ * OutBound design system
  * Minimal black-and-white signage (Helvetica, like the T) with MBTA line colors
  * as the only accents, and every color means something:
  *   events = Red Line · activities = Green Line · food = Orange Line
@@ -2385,4 +2385,34 @@ ol {
 .tmap__count {
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+/* ───────── group name ───────── */
+.crew-title > div {
+  flex: 1;
+  min-width: 0;
+}
+.crew-name {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.crew-name__edit {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  color: var(--muted);
+}
+.crew-name-edit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.crew-name-edit .input {
+  font-size: 20px;
+  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+  border-bottom-color: var(--crew);
 }

@@ -1,7 +1,7 @@
 /** Working name. Change it here and it updates across the app. */
-export const APP_NAME = 'common';
+export const APP_NAME = 'OutBound';
 export const TAGLINE = 'Two picks. One crew. Your next stop.';
-export const BRAND_STORY = 'Named for Boston Common, where America’s first subway opened in 1897.';
+export const BRAND_STORY = 'On the T, outbound means leaving downtown for somewhere new.';
 
 /** MBTA line colors: the whole visual system is built on these. */
 export const LINES = {

@@ -35,6 +35,7 @@ import {
   profileFor,
   publicUser,
   selfUser,
+  renameOldGroups,
   systemMessage,
   verifyPassword,
 } from './services.js';
@@ -65,6 +66,7 @@ export function createApp(db: Db, opts: AppOptions = {}) {
   const now = opts.now ?? (() => new Date());
   const catalog = new Catalog(db, opts.live ?? null, opts.images ?? null);
   const placeOf = (id: string) => catalog.get(id);
+  renameOldGroups(db, placeOf);
   const app = express();
   app.use(cors());
   app.use(express.json({ limit: '100kb' }));
@@ -427,7 +429,7 @@ export function createApp(db: Db, opts: AppOptions = {}) {
   app.get('/api/plans/:id/calendar.ics', auth, (req, res, next) => {
     try {
       const plan = ownPlan(req as AuthedRequest);
-      res.type('text/calendar').attachment(`common-${plan.id}.ics`).send(buildIcs([icsFor(plan)].filter(Boolean) as IcsEvent[]));
+      res.type('text/calendar').attachment(`outbound-${plan.id}.ics`).send(buildIcs([icsFor(plan)].filter(Boolean) as IcsEvent[]));
     } catch (err) {
       next(err);
     }
@@ -456,7 +458,7 @@ export function createApp(db: Db, opts: AppOptions = {}) {
       .filter((p) => p.userId === user.id)
       .map(icsFor)
       .filter((e): e is IcsEvent => !!e && e.end.getTime() > since);
-    res.type('text/calendar').send(buildIcs(events, `common. · ${user.fullName.split(' ')[0]}'s line`));
+    res.type('text/calendar').send(buildIcs(events, `OutBound · ${user.fullName.split(' ')[0]}'s line`));
   });
 
   app.get(
@@ -676,7 +678,12 @@ export function createApp(db: Db, opts: AppOptions = {}) {
     auth,
     h((req) => {
       const g = memberGroup(req);
-      if (typeof req.body?.name === 'string' && req.body.name.trim()) g.name = req.body.name.trim().slice(0, 40);
+      const name = typeof req.body?.name === 'string' ? req.body.name.replace(/\s+/g, ' ').trim().slice(0, 40) : '';
+      if (!name) throw new HttpError(400, 'Give the group a name');
+      if (name !== g.name) {
+        g.name = name;
+        systemMessage(db, g.id, `${req.user.fullName.split(' ')[0]} renamed the group to "${name}"`);
+      }
       db.save();
       return groupProfile(db, g, placeOf);
     }),
@@ -772,12 +779,12 @@ export function createApp(db: Db, opts: AppOptions = {}) {
     const end = plan.endsAt ? new Date(plan.endsAt) : new Date(start.getTime() + p.minutes * 60_000);
     const g = plan.groupId ? db.data.groups.find((x) => x.id === plan.groupId) : undefined;
     return {
-      uid: `${plan.id}@common.boston`,
+      uid: `${plan.id}@outbound.boston`,
       start,
       end,
       summary: `${p.name}${g ? ` with ${g.name}` : ''}`,
       location: p.address,
-      description: [p.blurb, `Nearest T: ${p.tStop}`, p.live ? `Listing: ${p.live.url}` : '', 'Planned with common.']
+      description: [p.blurb, `Nearest T: ${p.tStop}`, p.live ? `Listing: ${p.live.url}` : '', 'Planned with OutBound']
         .filter(Boolean)
         .join('\n'),
       url: p.live?.url,

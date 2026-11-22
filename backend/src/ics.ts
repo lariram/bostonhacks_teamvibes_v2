@@ -34,11 +34,11 @@ function fold(line: string): string {
   return parts.join('\r\n ');
 }
 
-export function buildIcs(events: IcsEvent[], calendarName = 'common.'): string {
+export function buildIcs(events: IcsEvent[], calendarName = 'OutBound'): string {
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//common//Boston plans//EN',
+    'PRODID:-//OutBound//Boston plans//EN',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
     `X-WR-CALNAME:${esc(calendarName)}`,

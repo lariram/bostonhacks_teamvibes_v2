@@ -144,7 +144,7 @@ export function matchCrew(db: Db, user: User, place: Place, random: () => number
 
   const group: Group = {
     id: newId('grp'),
-    name: crewName(place, random),
+    name: defaultGroupName(place),
     memberIds: [user.id, ...companions.map((c) => c.id)],
     status: 'forming',
     originPlaceId: place.id,
@@ -168,14 +168,25 @@ export function matchCrew(db: Db, user: User, place: Place, random: () => number
   return group;
 }
 
-const CREW_PREFIXES = ['Wicked', 'Green Line', 'Cobblestone', 'Harbor', 'Duckling', 'Dunks Run', 'Townie', 'Swan Boat', 'Fluffernutter', 'Pahk the Cah'];
-const CREW_SUFFIXES = ['Crew', 'Squad', 'Club', 'Gang', 'Society'];
+/** A plain default name: where the group first met. Members can rename it. */
+export function defaultGroupName(place: Place): string {
+  return `${place.name} group`.slice(0, 40);
+}
 
-function crewName(place: Place, random: () => number): string {
-  const hood = NEIGHBORHOOD_BY_ID[place.neighborhood].label.replace(' Boston', '');
-  const prefix = CREW_PREFIXES[Math.floor(random() * CREW_PREFIXES.length)];
-  const suffix = CREW_SUFFIXES[Math.floor(random() * CREW_SUFFIXES.length)];
-  return random() < 0.5 ? `The ${prefix} ${suffix}` : `${hood} ${prefix} ${suffix}`;
+// Names from the old generator ("The Wicked Squad", "Fenway Swan Boat Club"...)
+const OLD_NAME = /(Wicked|Green Line|Cobblestone|Harbor|Duckling|Dunks Run|Townie|Swan Boat|Fluffernutter|Pahk the Cah) (Crew|Squad|Club|Gang|Society)$/;
+
+/** Give groups that still have an auto-generated quirky name the plain default */
+export function renameOldGroups(db: Db, getPlace: (id: string) => Place | undefined) {
+  let changed = false;
+  for (const g of db.data.groups) {
+    const place = getPlace(g.originPlaceId);
+    if (place && OLD_NAME.test(g.name)) {
+      g.name = defaultGroupName(place);
+      changed = true;
+    }
+  }
+  if (changed) db.save();
 }
 
 export function systemMessage(db: Db, groupId: string, text: string) {

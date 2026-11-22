@@ -25,7 +25,7 @@ export function LineDots({ lines, size = 10 }: { lines: LineName[]; size?: numbe
 
 /**
  * The brand mark: four T lines converging on one station.
- * common = where Boston's lines meet.
+ * OutBound: every line heads out from downtown toward somewhere new.
  */
 export function BrandMark({ width = 280, dark = false }: { width?: number; dark?: boolean }) {
   const node = dark ? '#0b0b0c' : '#fff';

@@ -87,6 +87,15 @@ describe('full day flow', () => {
     const msgs = await authed(request(app).get(`/api/groups/${plan.body.groupId}/messages`));
     expect(msgs.body.length).toBeGreaterThan(1);
 
+    // plain default name, and any member can rename it
+    expect(plan.body.group.name).toBe(`${recs.body.suggestions[0].place.name} group`);
+    const renamed = await authed(request(app).patch(`/api/groups/${plan.body.groupId}`)).send({ name: '  Friday   dinner ' });
+    expect(renamed.body.name).toBe('Friday dinner');
+    const blank = await authed(request(app).patch(`/api/groups/${plan.body.groupId}`)).send({ name: '   ' });
+    expect(blank.status).toBe(400);
+    const msgs2 = await authed(request(app).get(`/api/groups/${plan.body.groupId}/messages`));
+    expect(msgs2.body.some((m: any) => m.text.includes('renamed the group to "Friday dinner"'))).toBe(true);
+
     // finish + rate + post publicly; review stays private
     const done = await authed(request(app).post(`/api/plans/${plan.body.id}/complete`)).send({
       rating: 5,

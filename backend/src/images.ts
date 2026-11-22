@@ -12,7 +12,7 @@ import { scheduleFromGoogle, type Schedule } from './hours.js';
  *   2. Otherwise Wikipedia / Wikimedia Commons: freely licensed photos only.
  * Results are cached in the database; nothing here ever blocks a request.
  */
-const UA = 'common-boston/1.0 (student hackathon project)';
+const UA = 'outbound-boston/1.0 (student hackathon project)';
 const REFRESH_MS = 30 * 24 * 60 * 60 * 1000; // re-check monthly (Google allows caching up to 30 days)
 
 type Fetch = (url: string, init?: RequestInit) => Promise<Response>;

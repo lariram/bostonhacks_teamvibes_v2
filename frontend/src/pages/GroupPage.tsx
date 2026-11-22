@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties, type Form
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Avatar } from '../components/Avatar';
 import { FollowButton } from '../components/FollowButton';
-import { ArrowIcon, SendIcon } from '../components/Icons';
+import { ArrowIcon, PencilIcon, SendIcon } from '../components/Icons';
 import { TypeTag } from '../components/PlaceBadge';
 import { TopBar } from '../components/TopBar';
 import { LineTimeline } from '../components/Transit';
@@ -24,6 +24,8 @@ export default function GroupPage() {
   const [text, setText] = useState('');
   const [tab, setTab] = useState<'chat' | 'profile'>('chat');
   const [error, setError] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState('');
   const endRef = useRef<HTMLDivElement>(null);
 
   const loadMessages = useCallback(() => api<ChatMessage[]>(`/groups/${id}/messages`).then(setMessages), [id]);
@@ -45,6 +47,15 @@ export default function GroupPage() {
     const msg = await api<ChatMessage>(`/groups/${id}/messages`, { body: { text } });
     setMessages((m) => [...m, msg]);
     setText('');
+  }
+
+  async function saveName(e: FormEvent) {
+    e.preventDefault();
+    const name = nameDraft.trim();
+    if (!name || name === group?.name) return setEditingName(false);
+    setGroup(await api<Group>(`/groups/${id}`, { method: 'PATCH', body: { name } }));
+    setEditingName(false);
+    loadMessages();
   }
 
   async function keep() {
@@ -86,7 +97,41 @@ export default function GroupPage() {
       <div className="crew-title">
         <span className="crew-title__bar" aria-hidden />
         <div>
-          <h1 className="title title--sm">{group.name}</h1>
+          {editingName ? (
+            <form className="crew-name-edit" onSubmit={saveName}>
+              <input
+                className="input"
+                value={nameDraft}
+                onChange={(e) => setNameDraft(e.target.value)}
+                maxLength={40}
+                autoFocus
+                aria-label="Group name"
+                onKeyDown={(e) => e.key === 'Escape' && setEditingName(false)}
+              />
+              <button type="submit" className="btn btn--primary btn--sm" disabled={!nameDraft.trim()}>
+                Save
+              </button>
+              <button type="button" className="btn btn--ghost btn--sm" onClick={() => setEditingName(false)}>
+                Cancel
+              </button>
+            </form>
+          ) : (
+            <h1 className="title title--sm crew-name">
+              {group.name}
+              <button
+                type="button"
+                className="icon-btn crew-name__edit"
+                aria-label="Rename group"
+                title="Rename group"
+                onClick={() => {
+                  setNameDraft(group.name);
+                  setEditingName(true);
+                }}
+              >
+                <PencilIcon size={16} />
+              </button>
+            </h1>
+          )}
           <p className="small muted">
             {group.members.length} riders{current ? ` · last stop ${current.place.name}` : ''}
           </p>

@@ -23,7 +23,7 @@ interface RecSessionApi extends RecSession {
   clear: () => void;
 }
 
-const KEY = 'common.recSession';
+const KEY = 'outbound.recSession';
 const empty: RecSession = { request: null, suggestions: [], shownIds: [], exhausted: false, budget: null, round: 0 };
 
 const Ctx = createContext<RecSessionApi | null>(null);

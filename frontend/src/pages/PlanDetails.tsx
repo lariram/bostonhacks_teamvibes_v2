@@ -149,7 +149,7 @@ export default function PlanDetails() {
         <section className="add-cal">
           <div className="add-cal__head">
             <Link to="/history?view=calendar" className="label in-app-cal">
-              <CheckIcon size={14} /> On your common. calendar
+              <CheckIcon size={14} /> On your OutBound calendar
             </Link>
             <span className="small muted">
               {dayName(new Date(plan.startsAt))} · {bostonTime(plan.startsAt)}
@@ -167,7 +167,7 @@ export default function PlanDetails() {
                 start: new Date(plan.startsAt),
                 end: new Date(plan.endsAt ?? plan.startsAt),
                 location: place.address,
-                details: `${place.blurb}\nNearest T: ${place.tStop}${place.live ? `\n${place.live.url}` : ''}\nPlanned with common.`,
+                details: `${place.blurb}\nNearest T: ${place.tStop}${place.live ? `\n${place.live.url}` : ''}\nPlanned with OutBound`,
               })}
             >
               Google Calendar
