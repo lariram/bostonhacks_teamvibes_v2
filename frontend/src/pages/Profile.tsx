@@ -87,7 +87,7 @@ export default function Profile() {
           <>
             <TStopMap data={tStops} />
             <p className="small muted">
-              Each place you go checks off its nearest stop. All {tStops.total} subway, trolley and Silver Line stops count.
+              Each place you go checks off its nearest stop. All {tStops.total} subway, trolley and Silver Line stops count. Zoom in to read every name.
             </p>
           </>
         )}
